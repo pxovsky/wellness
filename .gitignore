@@ -17,3 +17,5 @@ build/
 *.png
 image.jpg
 "@ | Out-File .gitignore -Encoding UTF8
+backend/
+frontend/
