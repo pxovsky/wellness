@@ -1,0 +1,19 @@
+# Stwórz .gitignore
+@"
+.venv/
+venv/
+*.db
+*.sqlite
+*.sqlite3
+__pycache__/
+*.pyc
+*.egg-info/
+.DS_Store
+.vscode/
+.idea/
+node_modules/
+dist/
+build/
+*.png
+image.jpg
+"@ | Out-File .gitignore -Encoding UTF8
