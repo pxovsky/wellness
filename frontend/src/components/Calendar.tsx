@@ -1,8 +1,7 @@
-// components/Calendar.tsx
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, X, BookOpen, Droplets, Pill, Smartphone } from 'lucide-react';
 import { DailyLog } from '../types';
-import { getDailyLogs, saveDailyLog } from '../utils/storage';
+import { getDailyLogForDate, saveDailyLog } from '../utils/storage';
 
 interface CalendarProps {
   dailyLogs: DailyLog[];
@@ -28,27 +27,33 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
 
   const weekDays = ['PN', 'WT', 'SR', 'CZ', 'PT', 'SO', 'ND'];
 
-  const isDayActive = (day: number, isCurrentMonth: boolean) => {
+  const formatDate = (d: number, m: number, y: number): string => {
+    const month = String(m + 1).padStart(2, '0');
+    const day = String(d).padStart(2, '0');
+    return `${y}-${month}-${day}`;
+  };
+
+  const isDayActive = (day: number, isCurrentMonth: boolean): boolean => {
     if (!isCurrentMonth) return false;
-    const date = new Date(year, month, day).toISOString().split('T')[0];
-    const log = dailyLogs.find(l => l.date === date);
+    const dateStr = formatDate(day, month, year);
+    const log = dailyLogs.find(l => l.date === dateStr);
     if (!log) return false;
     return (
       (log.reading_minutes && log.reading_minutes > 0) ||
       (log.water_glasses && log.water_glasses >= 6) ||
       (log.kefir_glasses && log.kefir_glasses > 0) ||
-      log.no_phone_after_21
+      (log.no_phone_after_21 && log.no_phone_after_21 === 1)
     );
   };
 
-  const getCompletionScore = (log: DailyLog | null) => {
+  const getCompletionScore = (log: DailyLog | null): number => {
     if (!log) return 0;
     let score = 0;
     const total = 4;
     if (log.reading_minutes && log.reading_minutes > 0) score++;
     if (log.water_glasses && log.water_glasses >= 6) score++;
     if (log.kefir_glasses && log.kefir_glasses > 0) score++;
-    if (log.no_phone_after_21) score++;
+    if (log.no_phone_after_21 && log.no_phone_after_21 === 1) score++;
     return Math.round((score / total) * 100);
   };
 
@@ -70,7 +75,7 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
     } else {
       achievements.push({ icon: <Pill className="w-6 h-6 opacity-40" />, label: 'Kefir: brak', achieved: false });
     }
-    if (log.no_phone_after_21) {
+    if (log.no_phone_after_21 && log.no_phone_after_21 === 1) {
       achievements.push({ icon: <Smartphone className="w-6 h-6" />, label: 'Brak telefonu po 21', achieved: true });
     } else {
       achievements.push({ icon: <Smartphone className="w-6 h-6 opacity-40" />, label: 'Brak telefonu po 21: nie', achieved: false });
@@ -78,25 +83,23 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
     return achievements;
   };
 
-  const handleDayClick = (day: number) => {
-    const date = new Date(year, month, day).toISOString().split('T')[0];
-    setSelectedDate(date);
-    const log = dailyLogs.find(l => l.date === date) || {
-      date,
+  const handleDayClick = async (day: number) => {
+    const dateStr = formatDate(day, month, year);
+    setSelectedDate(dateStr);
+    const log = await getDailyLogForDate(dateStr);
+    setSelectedLog(log || {
+      date: dateStr,
       reading_minutes: 0,
       water_glasses: 0,
       kefir_glasses: 0,
-      no_phone_after_21: false,
-      calories: 0,
-      discipline_score: 0,
-    };
-    setSelectedLog(log);
+      no_phone_after_21: 0,
+    });
     setIsEditing(false);
   };
 
-  const handleSaveLog = () => {
+  const handleSaveLog = async () => {
     if (selectedLog) {
-      saveDailyLog(selectedLog);
+      await saveDailyLog(selectedLog);
       onLogsUpdated();
       setIsEditing(false);
     }
@@ -127,9 +130,7 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
 
   return (
     <div className="space-y-3 xl:space-y-4 pb-20 xl:pb-0 animate-in fade-in duration-300">
-      {/* Kalendarz */}
       <div className="bg-[#1c1c1e] rounded-xl p-3 xl:p-4 border border-white/10 space-y-3">
-        {/* Navigation */}
         <div className="flex items-center justify-between">
           <button
             onClick={prevMonth}
@@ -146,7 +147,6 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
           </button>
         </div>
 
-        {/* Week Days Header */}
         <div className="grid grid-cols-7 gap-1 xl:gap-2">
           {weekDays.map(day => (
             <div key={day} className="text-center text-xs xl:text-sm font-bold text-gray-500 py-1">
@@ -155,12 +155,12 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
           ))}
         </div>
 
-        {/* Calendar Days Grid */}
         <div className="grid grid-cols-7 gap-1 xl:gap-2">
           {calendarDays.map((d, idx) => {
             const isActive = isDayActive(d.day, d.isCurrentMonth);
+            const dateStr = d.isCurrentMonth ? formatDate(d.day, month, year) : null;
             const isToday = d.isCurrentMonth && new Date(year, month, d.day).toDateString() === new Date().toDateString();
-            const isSelected = selectedDate === new Date(year, month, d.day).toISOString().split('T')[0] && d.isCurrentMonth;
+            const isSelected = selectedDate === dateStr && d.isCurrentMonth;
 
             return (
               <button
@@ -185,7 +185,6 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
           })}
         </div>
 
-        {/* Legend - Kompaktna */}
         <div className="mt-2 pt-2 border-t border-white/10 grid grid-cols-3 gap-2 text-xs">
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded bg-blue-600" />
@@ -202,16 +201,15 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
         </div>
       </div>
 
-      {/* PODSUMOWANIE */}
       {selectedLog && selectedDate ? (
         <div className="bg-[#1c1c1e] rounded-xl p-4 border border-white/10 space-y-3 animate-in fade-in duration-300">
           <div className="flex justify-between items-center">
             <div>
               <h3 className="text-sm xl:text-base font-bold">
-                {new Date(selectedDate).toLocaleDateString('pl-PL', { weekday: 'short', month: 'short', day: 'numeric' })}
+                {new Date(selectedDate + 'T00:00:00').toLocaleDateString('pl-PL', { weekday: 'short', month: 'short', day: 'numeric' })}
               </h3>
               <p className="text-gray-400 text-xs">
-                {new Date(selectedDate).toLocaleDateString('pl-PL', { weekday: 'long' })}
+                {new Date(selectedDate + 'T00:00:00').toLocaleDateString('pl-PL', { weekday: 'long' })}
               </p>
             </div>
             <div className="text-right">
@@ -258,7 +256,6 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
         </div>
       )}
 
-      {/* EDIT MODAL */}
       {selectedLog && selectedDate && isEditing && (
         <div className="fixed inset-0 bg-black/50 flex items-end z-50">
           <div className="w-full bg-[#1c1c1e] rounded-t-2xl p-6 space-y-3 max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom-4 border-t border-white/10">
@@ -273,7 +270,6 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
             </div>
 
             <div className="space-y-3">
-              {/* Czytanie */}
               <div className="space-y-1">
                 <label className="text-sm font-medium text-gray-300">📖 Czytanie (minuty)</label>
                 <input
@@ -286,7 +282,6 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
                 />
               </div>
 
-              {/* Woda */}
               <div className="space-y-1">
                 <label className="text-sm font-medium text-gray-300">💧 Nawodnienie (szklanki)</label>
                 <input
@@ -299,7 +294,6 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
                 />
               </div>
 
-              {/* Kefir */}
               <div className="space-y-1">
                 <label className="text-sm font-medium text-gray-300">🥛 Kefir (porcje)</label>
                 <input
@@ -312,37 +306,22 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
                 />
               </div>
 
-              {/* Brak telefonu */}
               <div className="space-y-1">
                 <label className="text-sm font-medium text-gray-300">📵 Brak telefonu po 21</label>
                 <button
                   onClick={() =>
-                    setSelectedLog({ ...selectedLog, no_phone_after_21: !selectedLog.no_phone_after_21 })
+                    setSelectedLog({ ...selectedLog, no_phone_after_21: (selectedLog.no_phone_after_21 || 0) === 1 ? 0 : 1 })
                   }
                   className={`w-full py-2 rounded-lg font-semibold transition text-sm ${
-                    selectedLog.no_phone_after_21
+                    (selectedLog.no_phone_after_21 || 0) === 1
                       ? 'bg-green-600 text-white'
                       : 'bg-[#2c2c2e] text-gray-400 hover:bg-[#3a3a3c]'
                   }`}
                 >
-                  {selectedLog.no_phone_after_21 ? '✓ Tak' : '✗ Nie'}
+                  {(selectedLog.no_phone_after_21 || 0) === 1 ? '✓ Tak' : '✗ Nie'}
                 </button>
               </div>
 
-              {/* Kalorie */}
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-300">🍽️ Kalorie</label>
-                <input
-                  type="number"
-                  value={selectedLog.calories || 0}
-                  onChange={(e) =>
-                    setSelectedLog({ ...selectedLog, calories: parseInt(e.target.value) || 0 })
-                  }
-                  className="w-full bg-[#2c2c2e] border border-white/10 rounded-lg px-3 py-2 text-white text-sm"
-                />
-              </div>
-
-              {/* Dyscyplina */}
               <div className="space-y-1">
                 <label className="text-sm font-medium text-gray-300">💪 Dyscyplina (pkt)</label>
                 <input

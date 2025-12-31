@@ -1,47 +1,116 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Training } from '../types';
-import { Trash2, Calendar } from 'lucide-react';
 import { deleteTraining } from '../utils/storage';
+import { Trash2, Calendar, Clock, Flame, Heart, Zap } from 'lucide-react';
 
 interface HistoryProps {
   trainings: Training[];
-  onDeleted: () => void;
 }
 
-export const History: React.FC<HistoryProps> = ({ trainings, onDeleted }) => {
-  const handleDelete = (id: string) => {
-    if (window.confirm("Delete this training?")) {
-      deleteTraining(id);
-      onDeleted();
+export const History: React.FC<HistoryProps> = ({ trainings }) => {
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const sortedTrainings = [...trainings].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+
+  const handleDelete = async (id: number) => {
+    if (window.confirm('Jesteś pewny?')) {
+      setDeletingId(id);
+      try {
+        await deleteTraining(id);
+        // Usunięcie będzie widoczne po refreshu
+        window.location.reload();
+      } catch (e) {
+        console.error('Error deleting training:', e);
+        setDeletingId(null);
+      }
     }
   };
 
   return (
-    <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-      <h2 className="text-xl font-bold mb-4">Training History</h2>
-      {trainings.length === 0 ? (
-        <div className="text-center py-20 text-gray-600">
-          <Calendar className="w-12 h-12 mx-auto mb-2 opacity-20" />
-          <p>No trainings logged yet.</p>
+    <div className="space-y-4 pb-20 xl:pb-0 animate-in fade-in duration-300">
+      <h2 className="text-2xl font-bold">Historia Treningów</h2>
+
+      {sortedTrainings.length === 0 ? (
+        <div className="bg-[#1c1c1e] rounded-xl p-8 border border-white/10 text-center">
+          <p className="text-gray-500 text-sm">Brak zapisanych treningów. Dodaj pierwszy! 💪</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {trainings.map((t) => (
-            <div key={t.id} className="bg-[#1c1c1e] rounded-2xl p-4 flex justify-between items-center group">
-              <div className="space-y-1">
-                <div className="font-bold">{new Date(t.date).toLocaleDateString()} <span className="text-gray-500 font-normal text-sm">{new Date(t.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
-                <div className="text-sm text-gray-400">
-                  {t.duration} min • {t.calories} kcal • HR {t.avgHr} • TE {t.effect}
+          {sortedTrainings.map((training) => (
+            <div
+              key={training.id}
+              className="bg-[#1c1c1e] rounded-lg p-4 border border-white/10 hover:border-white/20 transition"
+            >
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Calendar className="w-4 h-4 text-gray-400" />
+                    <h3 className="font-bold text-sm xl:text-base">
+                      {new Date(training.date).toLocaleDateString('pl-PL', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </h3>
+                  </div>
+                  {training.notes && (
+                    <p className="text-xs xl:text-sm text-gray-400 italic">{training.notes}</p>
+                  )}
                 </div>
-                {t.notes && <div className="text-xs text-gray-600 italic mt-1 line-clamp-1">{t.notes}</div>}
+                <button
+                  onClick={() => handleDelete(training.id)}
+                  disabled={deletingId === training.id}
+                  className="text-red-500 hover:text-red-400 disabled:opacity-50 transition p-1"
+                >
+                  <Trash2 className="w-4 h-4 xl:w-5 xl:h-5" />
+                </button>
               </div>
-              <button 
-                onClick={() => handleDelete(t.id)}
-                className="p-2 text-gray-600 hover:text-red-500 transition-colors"
-              >
-                <Trash2 className="w-5 h-5" />
-              </button>
+
+              <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 text-xs xl:text-sm">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-blue-400" />
+                  <div>
+                    <p className="text-gray-400">Czas</p>
+                    <p className="font-bold">{training.duration_min} min</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Flame className="w-4 h-4 text-orange-400" />
+                  <div>
+                    <p className="text-gray-400">Kcal</p>
+                    <p className="font-bold">{training.calories}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Heart className="w-4 h-4 text-red-400" />
+                  <div>
+                    <p className="text-gray-400">Śr. HR</p>
+                    <p className="font-bold">{training.avg_hr}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Heart className="w-4 h-4 text-red-500" />
+                  <div>
+                    <p className="text-gray-400">Max HR</p>
+                    <p className="font-bold">{training.max_hr}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-yellow-400" />
+                  <div>
+                    <p className="text-gray-400">Efekt</p>
+                    <p className="font-bold">{training.training_effect.toFixed(1)}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           ))}
         </div>

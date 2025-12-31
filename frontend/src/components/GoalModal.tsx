@@ -1,109 +1,171 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
 import { DailyLog } from '../types';
-import { saveDailyLog } from '../utils/storage';
+import { logReading, logWater, logKefir, logNoPhoneAfter21 } from '../utils/storage';
+import { X, Loader2 } from 'lucide-react';
 
 interface GoalModalProps {
   goal: string;
-  todayLog: DailyLog | null;
+  todayLog: DailyLog;
   onClose: () => void;
   onSaved: () => void;
 }
 
 export const GoalModal: React.FC<GoalModalProps> = ({ goal, todayLog, onClose, onSaved }) => {
-  const [count, setCount] = useState(0);
-
-  const goals: Record<string, { label: string; unit: string; max: number; icon: string }> = {
-    reading: { label: 'Czytanie', unit: 'min', max: 120, icon: '📖' },
-    kefir: { label: 'Kefir', unit: 'porcji', max: 3, icon: '🥛' },
-    water: { label: 'Woda', unit: 'szklanek', max: 6, icon: '💧' },
-    discipline: { label: 'Dyscyplina', unit: 'pkt', max: 100, icon: '💪' },
-    'no-phone': { label: 'Brak telefonu po 21', unit: 'tak/nie', max: 1, icon: '📵' },
-    calories: { label: 'Kalorie', unit: 'kcal', max: 2000, icon: '🍽️' },
+  const today = new Date().toISOString().split('T')[0];
+  
+  const getInitialValue = () => {
+    if (goal === 'reading') return todayLog.reading_minutes || 0;
+    if (goal === 'water') return todayLog.water_glasses || 0;
+    if (goal === 'kefir') return todayLog.kefir_glasses || 0;
+    if (goal === 'no-phone') return (todayLog.no_phone_after_21 || 0) === 1;
+    return 0;
   };
 
-  const current = goals[goal];
-  if (!current) return null;
+  const [numValue, setNumValue] = useState<number>(
+    goal === 'no-phone' ? 0 : (getInitialValue() as number)
+  );
+  const [boolValue, setBoolValue] = useState<boolean>(
+    goal === 'no-phone' ? (getInitialValue() as boolean) : false
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleAdd = () => {
-    if (goal === 'no-phone') {
-      const updated = { ...todayLog, no_phone_after_21: !todayLog?.no_phone_after_21 };
-      saveDailyLog(updated);
-    } else {
-      const newCount = Math.min(count + 1, current.max);
-      setCount(newCount);
-      
-      const fieldMap: Record<string, keyof DailyLog> = {
-        reading: 'reading_minutes',
-        kefir: 'kefir_glasses',
-        water: 'water_glasses',
-        discipline: 'discipline_score',
-        calories: 'calories',
-      };
-      
-      const updated = { ...todayLog, [fieldMap[goal]]: newCount };
-      saveDailyLog(updated);
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+
+      if (goal === 'reading') {
+        await logReading(today, numValue);
+      } else if (goal === 'water') {
+        await logWater(today, numValue);
+      } else if (goal === 'kefir') {
+        await logKefir(today, numValue);
+      } else if (goal === 'no-phone') {
+        await logNoPhoneAfter21(today, boolValue);
+      }
+
+      onSaved();
+    } catch (e: any) {
+      setError(e.message || 'Błąd przy zapisywaniu');
+    } finally {
+      setSaving(false);
     }
-    onSaved();
   };
 
-  const handleRemove = () => {
-    if (count > 0) {
-      const newCount = count - 1;
-      setCount(newCount);
+  const getGoalConfig = () => {
+    switch (goal) {
+      case 'reading':
+        return { title: '📖 Czytanie', icon: '📖', unit: 'min', goal: 60, step: 5 };
+      case 'water':
+        return { title: '💧 Nawodnienie', icon: '💧', unit: 'szkl.', goal: 6, step: 1 };
+      case 'kefir':
+        return { title: '🥛 Kefir', icon: '🥛', unit: 'porcji', goal: 2, step: 1 };
+      case 'no-phone':
+        return { title: '📵 Brak telefonu po 21', icon: '📵', unit: '', goal: 1, step: 1 };
+      default:
+        return { title: 'Cel', icon: '✓', unit: '', goal: 100, step: 1 };
     }
   };
+
+  const config = getGoalConfig();
+  const progress = goal === 'no-phone' 
+    ? (boolValue ? 100 : 0)
+    : Math.min((numValue / config.goal) * 100, 100);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end z-50 animate-in fade-in duration-200">
-      <div className="w-full bg-[#1c1c1e] rounded-t-2xl p-6 space-y-4 animate-in slide-in-from-bottom-4 duration-300">
-        {/* Header */}
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-[#1c1c1e] rounded-xl border border-white/10 p-6 max-w-sm w-full space-y-4 animate-in fade-in zoom-in-95">
         <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <span className="text-4xl">{current.icon}</span>
-            <div>
-              <h2 className="text-2xl font-bold">{current.label}</h2>
-              <p className="text-gray-400 text-sm">{count}/{current.max} {current.unit}</p>
-            </div>
-          </div>
+          <h2 className="text-lg font-bold">{config.title}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white">
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Progress Bar */}
-        <div className="w-full bg-[#2c2c2e] h-4 rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-blue-500 transition-all duration-300" 
-            style={{ width: `${(count / current.max) * 100}%` }}
-          />
+        {error && (
+          <div className="bg-red-900/20 border border-red-500 rounded p-2 text-red-200 text-sm">
+            {error}
+          </div>
+        )}
+
+        <div className="space-y-3">
+          {goal === 'no-phone' ? (
+            <button
+              onClick={() => setBoolValue(!boolValue)}
+              className={`w-full py-6 rounded-lg font-bold text-lg transition ${
+                boolValue
+                  ? 'bg-green-600 text-white'
+                  : 'bg-[#2c2c2e] text-gray-400 hover:bg-[#3a3a3c]'
+              }`}
+            >
+              {boolValue ? '✓ Tak, bez telefonu!' : '✗ Nie, miałem telefon'}
+            </button>
+          ) : (
+            <>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setNumValue(Math.max(0, numValue - config.step))}
+                  className="w-12 h-12 bg-[#2c2c2e] hover:bg-[#3a3a3c] rounded-lg font-bold text-xl transition"
+                >
+                  −
+                </button>
+                <div className="flex-1 text-center">
+                  <p className="text-3xl font-bold text-blue-400">{numValue}</p>
+                  <p className="text-gray-400 text-sm">{config.unit}</p>
+                </div>
+                <button
+                  onClick={() => setNumValue(numValue + config.step)}
+                  className="w-12 h-12 bg-[#2c2c2e] hover:bg-[#3a3a3c] rounded-lg font-bold text-xl transition"
+                >
+                  +
+                </button>
+              </div>
+
+              <input
+                type="range"
+                min="0"
+                max={config.goal * 1.5}
+                value={numValue}
+                onChange={(e) => setNumValue(parseInt(e.target.value))}
+                className="w-full accent-blue-600 cursor-pointer"
+              />
+
+              <div className="text-center">
+                <p className="text-gray-400 text-xs mb-1">Cel: {config.goal} {config.unit}</p>
+                <div className="w-full bg-[#2c2c2e] rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-blue-500 to-green-500 h-full transition-all"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Controls */}
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <button
-            onClick={handleRemove}
-            disabled={count === 0}
-            className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-700 text-white font-bold py-3 rounded-xl transition"
+            onClick={onClose}
+            className="flex-1 bg-[#2c2c2e] hover:bg-[#3a3a3c] text-white font-bold py-2 rounded-lg transition"
           >
-            − Usuń
+            Anuluj
           </button>
           <button
-            onClick={handleAdd}
-            disabled={count >= current.max && goal !== 'no-phone'}
-            className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 text-white font-bold py-3 rounded-xl transition"
+            onClick={handleSave}
+            disabled={saving}
+            className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-600/50 text-white font-bold py-2 rounded-lg transition flex items-center justify-center gap-2"
           >
-            + Dodaj
+            {saving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Zapisywanie...
+              </>
+            ) : (
+              'Zapisz'
+            )}
           </button>
         </div>
-
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="w-full bg-[#3a3a3c] hover:bg-[#48484a] text-white font-bold py-3 rounded-xl transition"
-        >
-          Gotowe
-        </button>
       </div>
     </div>
   );

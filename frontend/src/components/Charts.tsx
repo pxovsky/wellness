@@ -14,9 +14,9 @@ export const Charts: React.FC<ChartsProps> = ({ trainings, dailyLogs = [] }) => 
     .map(t => ({
       date: new Date(t.date).toLocaleDateString([], { month: 'numeric', day: 'numeric' }),
       kcal: t.calories,
-      hr: t.avgHr,
-      maxHr: t.maxHr,
-      effect: t.effect
+      hr: t.avg_hr,
+      maxHr: t.max_hr,
+      effect: t.training_effect
     }))
     .slice(-10);
 
@@ -33,7 +33,7 @@ export const Charts: React.FC<ChartsProps> = ({ trainings, dailyLogs = [] }) => 
     reading: sortedLogs.filter(l => l.reading_minutes && l.reading_minutes > 0).length,
     kefir: sortedLogs.filter(l => l.kefir_glasses && l.kefir_glasses > 0).length,
     water: sortedLogs.filter(l => l.water_glasses && l.water_glasses >= 6).length,
-    noPhone: sortedLogs.filter(l => l.no_phone_after_21).length,
+    noPhone: sortedLogs.filter(l => l.no_phone_after_21 && l.no_phone_after_21 === 1).length,
   };
 
   const complianceData = [
@@ -47,7 +47,7 @@ export const Charts: React.FC<ChartsProps> = ({ trainings, dailyLogs = [] }) => 
 
   return (
     <div className="space-y-8 pb-20 animate-in fade-in slide-in-from-right-4 duration-300">
-      <h2 className="text-xl font-bold">Trends</h2>
+      <h2 className="text-xl font-bold">Wykresy i Trendy</h2>
 
       {/* TRENINGI */}
       <div className="space-y-6">
