@@ -1,11 +1,11 @@
 export interface Training {
-  id: string;
+  id: number;
   date: string;
-  duration: number;
+  duration_min: number;
   calories: number;
-  avgHr: number;
-  maxHr: number;
-  effect: number;
+  avg_hr: number;
+  max_hr: number;
+  training_effect: number;
   notes: string;
 }
 
@@ -14,9 +14,8 @@ export interface DailyLog {
   reading_minutes?: number;
   water_glasses?: number;
   kefir_glasses?: number;
-  no_phone_after_21?: boolean;
+  no_phone_after_21?: number; // 1 = yes, 0 = no
   discipline_score?: number;
-  calories?: number;
   mood_score?: number;
 }
 
