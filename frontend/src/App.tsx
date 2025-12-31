@@ -8,7 +8,6 @@ import { Calendar } from './components/Calendar';
 import { View, Training, DailyLog } from './types';
 import { getTrainings, getDailyLogs } from './utils/storage';
 import { Home, Plus, Calendar as CalendarIcon, History as HistoryIcon, BarChart3, AlertCircle, Loader2 } from 'lucide-react';
-import { apiClient } from './services/api';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('Dashboard');
@@ -20,36 +19,76 @@ const App: React.FC = () => {
 
   const loadData = async () => {
     try {
-      setIsLoading(true); setApiError(null);
-      if (!(await apiClient.healthCheck())) throw new Error('Backend offline');
-      const [t, l] = await Promise.all([getTrainings(), getDailyLogs()]);
-      setTrainings(t); setDailyLogs(l);
-    } catch (e: any) { setApiError(e.message || 'Failed to load'); } 
-    finally { setIsLoading(false); }
+      setIsLoading(true);
+      setApiError(null);
+      const [trainingsData, logsData] = await Promise.all([
+        getTrainings(200),
+        getDailyLogs(30)
+      ]);
+      setTrainings(trainingsData);
+      setDailyLogs(logsData);
+    } catch (e: any) {
+      setApiError(e.message || 'Failed to load data');
+      console.error('Error loading data:', e);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  useEffect(() => { loadData(); }, []);
   useEffect(() => {
-    const r = () => setIsMobile(window.innerWidth < 1280);
-    window.addEventListener('resize', r); return () => window.removeEventListener('resize', r);
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 1280);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const renderView = () => {
-    if (isLoading && currentView === 'Dashboard') 
-      return <div className="flex justify-center p-10"><Loader2 className="animate-spin w-10 h-10 text-blue-500"/></div>;
-    if (apiError && currentView === 'Dashboard')
-      return <div className="p-4 bg-red-900/20 border border-red-500 rounded text-red-200"><AlertCircle className="inline mr-2"/>{apiError}</div>;
-      
+    if (isLoading && currentView === 'Dashboard') {
+      return (
+        <div className="flex justify-center items-center p-10">
+          <Loader2 className="animate-spin w-10 h-10 text-blue-500" />
+        </div>
+      );
+    }
+
+    if (apiError && currentView === 'Dashboard') {
+      return (
+        <div className="p-4 bg-red-900/20 border border-red-500 rounded text-red-200 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="font-semibold">Błąd połączenia</p>
+            <p className="text-sm">{apiError}</p>
+          </div>
+        </div>
+      );
+    }
+
     switch (currentView) {
-      case 'Dashboard': return <Dashboard trainings={trainings} dailyLogs={dailyLogs} />;
-      case 'AddTraining': return <AddTraining onSaved={() => { loadData(); setCurrentView('Dashboard'); }} />;
-      case 'History': return <History trainings={trainings} />;
-      case 'Charts': return <Charts trainings={trainings} dailyLogs={dailyLogs} />;
-      case 'Calendar': return <Calendar dailyLogs={dailyLogs} onLogsUpdated={loadData} />;
-      default: return <Dashboard trainings={trainings} dailyLogs={dailyLogs} />;
+      case 'Dashboard':
+        return <Dashboard trainings={trainings} dailyLogs={dailyLogs} onRefresh={loadData} />;
+      case 'AddTraining':
+        return (
+          <AddTraining
+            onSaved={() => {
+              loadData();
+              setCurrentView('Dashboard');
+            }}
+          />
+        );
+      case 'History':
+        return <History trainings={trainings} />;
+      case 'Charts':
+        return <Charts trainings={trainings} dailyLogs={dailyLogs} />;
+      case 'Calendar':
+        return <Calendar dailyLogs={dailyLogs} onLogsUpdated={loadData} />;
+      default:
+        return <Dashboard trainings={trainings} dailyLogs={dailyLogs} onRefresh={loadData} />;
     }
   };
-  
+
   const navItems = [
     { label: 'Dashboard', icon: <Home className="w-5 h-5" />, view: 'Dashboard' as View },
     { label: 'Dodaj Trening', icon: <Plus className="w-5 h-5" />, view: 'AddTraining' as View },
@@ -67,12 +106,14 @@ const App: React.FC = () => {
             <h1 className="text-lg font-bold text-blue-500">Myniu Lite</h1>
           </div>
           <nav className="space-y-2 flex-1">
-            {navItems.map(item => (
+            {navItems.map((item) => (
               <button
                 key={item.view}
                 onClick={() => setCurrentView(item.view)}
                 className={`w-full text-left px-3 py-2 rounded-lg transition font-medium text-sm flex items-center gap-2 ${
-                  currentView === item.view ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-white/10 hover:text-white'
+                  currentView === item.view
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-400 hover:bg-white/10 hover:text-white'
                 }`}
               >
                 {item.icon} {item.label}
@@ -83,12 +124,17 @@ const App: React.FC = () => {
       )}
       <div className="flex-1 flex flex-col">
         {isMobile ? (
-          <Layout currentView={currentView} onViewChange={setCurrentView}>{renderView()}</Layout>
+          <Layout currentView={currentView} onViewChange={setCurrentView}>
+            {renderView()}
+          </Layout>
         ) : (
-          <main className="flex-1 overflow-y-auto px-8 py-6 max-w-7xl">{renderView()}</main>
+          <main className="flex-1 overflow-y-auto px-8 py-6 max-w-7xl">
+            {renderView()}
+          </main>
         )}
       </div>
     </div>
   );
 };
+
 export default App;
