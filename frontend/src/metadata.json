@@ -1,6 +1,6 @@
 
 {
-  "name": "Myniu Lite - Fitness Tracker",
+  "name": "m~ wellness - Fitness Tracker",
   "description": "A high-performance training and habit tracker with Gemini-powered OCR for training screenshots.",
   "requestFramePermissions": [
     "camera"

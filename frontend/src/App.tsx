@@ -103,7 +103,7 @@ const App: React.FC = () => {
         <aside className="hidden xl:flex w-56 bg-[#0a0a0a] border-r border-white/10 px-6 py-8 space-y-8 overflow-y-auto sticky top-0 h-screen flex-col">
           <div className="flex items-center gap-2">
             <span className="text-2xl">‹</span>
-            <h1 className="text-lg font-bold text-blue-500">Myniu Lite</h1>
+            <h1 className="text-lg font-bold text-blue-500">m~ wellness</h1>
           </div>
           <nav className="space-y-2 flex-1">
             {navItems.map((item) => (
