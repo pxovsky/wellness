@@ -6,7 +6,7 @@ export const Logo: React.FC = () => {
       <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
         <span className="text-white font-bold text-sm">M</span>
       </div>
-      <h1 className="text-lg font-bold text-white">Myniu Lite</h1>
+      <h1 className="text-lg font-bold text-white">m~ wellness</h1>
     </div>
   );
 };
