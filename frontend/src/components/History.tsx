@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Training } from '../types';
 import { deleteTraining } from '../utils/storage';
 import { Trash2, Calendar, Clock, Flame, Heart, Zap } from 'lucide-react';
+import { PageHeader } from './PageHeader';
 
 interface HistoryProps {
   trainings: Training[];
@@ -30,7 +31,7 @@ export const History: React.FC<HistoryProps> = ({ trainings }) => {
 
   return (
     <div className="space-y-4 pb-20 xl:pb-0 animate-in fade-in duration-300">
-      <h2 className="text-2xl font-bold">Historia Treningów</h2>
+      <PageHeader title="Historia Treningów" />
 
       {sortedTrainings.length === 0 ? (
         <div className="bg-[#1c1c1e] rounded-xl p-8 border border-white/10 text-center">

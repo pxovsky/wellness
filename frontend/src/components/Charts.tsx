@@ -1,6 +1,7 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Legend, PieChart, Pie, Cell } from 'recharts';
 import { Training, DailyLog } from '../types';
+import { PageHeader } from './PageHeader';
 
 interface ChartsProps {
   trainings: Training[];
@@ -47,7 +48,7 @@ export const Charts: React.FC<ChartsProps> = ({ trainings, dailyLogs = [] }) => 
 
   return (
     <div className="space-y-8 pb-20 animate-in fade-in slide-in-from-right-4 duration-300">
-      <h2 className="text-xl font-bold">Wykresy i Trendy</h2>
+      <PageHeader title="Wykresy i Trendy" subtitle="Ostatnie 10 treningów i 7 dni" />
 
       {/* TRENINGI */}
       <div className="space-y-6">

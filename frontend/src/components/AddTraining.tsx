@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Training } from '../types';
 import { saveTraining } from '../utils/storage';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { PageHeader } from './PageHeader';
+
 
 export const AddTraining: React.FC<{ onSaved: () => void }> = ({ onSaved }) => {
   const now = new Date();
@@ -55,8 +57,8 @@ export const AddTraining: React.FC<{ onSaved: () => void }> = ({ onSaved }) => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4 pb-20 xl:pb-0">
-      <h2 className="text-2xl font-bold">Dodaj Trening</h2>
+    <div className="space-y-4 pb-20 xl:pb-0 px-4 xl:px-8">
+      <PageHeader title="Dodaj Trening" />
 
       {error && (
         <div className="p-4 bg-red-900/20 border border-red-500 rounded text-red-200 flex items-start gap-3">

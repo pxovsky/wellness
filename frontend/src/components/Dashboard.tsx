@@ -3,6 +3,7 @@ import { Training, DailyLog } from '../types';
 import { Dumbbell, Flame, Heart, Zap, AlertTriangle, Sparkles, Check, Book, Wind, Droplets, Phone, X } from 'lucide-react';
 import { GoalModal } from './GoalModal';
 import { getTodayLog } from '../utils/storage';
+import { PageHeader } from './PageHeader';
 
 interface DashboardProps {
   trainings: Training[];
@@ -115,6 +116,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ trainings, dailyLogs, onRe
 
   return (
     <div className="space-y-3 xl:space-y-4 pb-20 xl:pb-0 animate-in fade-in duration-500">
+      <PageHeader title="Dashboard" />
+
       {/* AI Coach */}
       {showAICoach && (
         <div className="sticky top-0 z-40 bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30 rounded-lg p-3 xl:p-4 mb-4">
