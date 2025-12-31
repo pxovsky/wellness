@@ -1,4 +1,0 @@
-INSTRUKCJA SZYBKA:
-1. Uruchom 'bash RUN_EVERYTHING.sh'
-2. Skrypt wykona setup backendu, frontendu i zrobi commit.
-3. Potem uruchom serwery w dwóch terminalach.
