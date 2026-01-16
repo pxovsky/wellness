@@ -17,6 +17,10 @@ export interface DailyLog {
   no_phone_after_21?: number; // 1 = yes, 0 = no
   discipline_score?: number;
   mood_score?: number;
+  vibe_coding_minutes?: number;
+  household_chores?: number;
+  // 👇 Nowe pole
+  vitamins?: number; // 1 = yes, 0 = no
 }
 
 export type View = 'Dashboard' | 'AddTraining' | 'History' | 'Charts' | 'Calendar';

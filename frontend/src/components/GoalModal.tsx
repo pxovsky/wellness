@@ -1,6 +1,15 @@
 import React, { useState } from 'react';
 import { DailyLog } from '../types';
-import { logReading, logWater, logKefir, logNoPhoneAfter21 } from '../utils/storage';
+import { 
+  logReading, 
+  logWater, 
+  logKefir, 
+  logNoPhoneAfter21,
+  logVibeCoding,
+  logHouseholdChores,
+  // 👇 Nowa funkcja
+  logVitamins
+} from '../utils/storage';
 import { X, Loader2 } from 'lucide-react';
 
 interface GoalModalProps {
@@ -18,14 +27,20 @@ export const GoalModal: React.FC<GoalModalProps> = ({ goal, todayLog, onClose, o
     if (goal === 'water') return todayLog.water_glasses || 0;
     if (goal === 'kefir') return todayLog.kefir_glasses || 0;
     if (goal === 'no-phone') return (todayLog.no_phone_after_21 || 0) === 1;
+    if (goal === 'vibe-coding') return todayLog.vibe_coding_minutes || 0;
+    if (goal === 'chores') return todayLog.household_chores || 0;
+    // 👇 Witaminy
+    if (goal === 'vitamins') return (todayLog.vitamins || 0) === 1;
     return 0;
   };
 
+  const isBooleanGoal = goal === 'no-phone' || goal === 'vitamins';
+
   const [numValue, setNumValue] = useState<number>(
-    goal === 'no-phone' ? 0 : (getInitialValue() as number)
+    isBooleanGoal ? 0 : (getInitialValue() as number)
   );
   const [boolValue, setBoolValue] = useState<boolean>(
-    goal === 'no-phone' ? (getInitialValue() as boolean) : false
+    isBooleanGoal ? (getInitialValue() as boolean) : false
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +58,14 @@ export const GoalModal: React.FC<GoalModalProps> = ({ goal, todayLog, onClose, o
         await logKefir(today, numValue);
       } else if (goal === 'no-phone') {
         await logNoPhoneAfter21(today, boolValue);
+      } else if (goal === 'vibe-coding') {
+        await logVibeCoding(today, numValue);
+      } else if (goal === 'chores') {
+        await logHouseholdChores(today, numValue);
+      } 
+      // 👇 Zapis witamin
+      else if (goal === 'vitamins') {
+        await logVitamins(today, boolValue);
       }
 
       onSaved();
@@ -63,13 +86,20 @@ export const GoalModal: React.FC<GoalModalProps> = ({ goal, todayLog, onClose, o
         return { title: '🥛 Kefir', icon: '🥛', unit: 'porcji', goal: 2, step: 1 };
       case 'no-phone':
         return { title: '📵 Brak telefonu po 21', icon: '📵', unit: '', goal: 1, step: 1 };
+      case 'vibe-coding':
+        return { title: '💻 Vibe Coding', icon: '💻', unit: 'min', goal: 120, step: 15 };
+      case 'chores':
+        return { title: '🧹 Obowiązki Domowe', icon: '🧹', unit: 'zadań', goal: 1, step: 1 };
+      // 👇 Witaminy
+      case 'vitamins':
+        return { title: '💊 Witaminy', icon: '💊', unit: '', goal: 1, step: 1 };
       default:
         return { title: 'Cel', icon: '✓', unit: '', goal: 100, step: 1 };
     }
   };
 
   const config = getGoalConfig();
-  const progress = goal === 'no-phone' 
+  const progress = isBooleanGoal 
     ? (boolValue ? 100 : 0)
     : Math.min((numValue / config.goal) * 100, 100);
 
@@ -90,7 +120,7 @@ export const GoalModal: React.FC<GoalModalProps> = ({ goal, todayLog, onClose, o
         )}
 
         <div className="space-y-3">
-          {goal === 'no-phone' ? (
+          {isBooleanGoal ? (
             <button
               onClick={() => setBoolValue(!boolValue)}
               className={`w-full py-6 rounded-lg font-bold text-lg transition ${
@@ -99,7 +129,7 @@ export const GoalModal: React.FC<GoalModalProps> = ({ goal, todayLog, onClose, o
                   : 'bg-[#2c2c2e] text-gray-400 hover:bg-[#3a3a3c]'
               }`}
             >
-              {boolValue ? '✓ Tak, bez telefonu!' : '✗ Nie, miałem telefon'}
+              {boolValue ? '✓ Tak, wykonane!' : '✗ Nie, jeszcze nie'}
             </button>
           ) : (
             <>

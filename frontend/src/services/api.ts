@@ -23,5 +23,9 @@ export const dailyAPI = {
   logReading: (date: string, minutes: number) => API.post('/daily/reading', { date, minutes }).then(r => r.data),
   logWater: (date: string, glasses: number) => API.post('/daily/water', { date, glasses }).then(r => r.data),
   logKefir: (date: string, glasses: number) => API.post('/daily/kefir', { date, glasses }).then(r => r.data),
-  logNoPhoneAfter21: (date: string, success: boolean) => API.post('/daily/no_phone_after_21', { date, success }).then(r => r.data)
+  logNoPhoneAfter21: (date: string, success: boolean) => API.post('/daily/no_phone_after_21', { date, success }).then(r => r.data),
+  logVibeCoding: (date: string, minutes: number) => API.post('/daily/vibe_coding', { date, minutes }).then(r => r.data),
+  logHouseholdChores: (date: string, count: number) => API.post('/daily/chores', { date, count }).then(r => r.data),
+  // 👇 NOWA METODA
+  logVitamins: (date: string, taken: boolean) => API.post('/daily/vitamins', { date, taken }).then(r => r.data)
 };

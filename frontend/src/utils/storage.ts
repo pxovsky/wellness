@@ -64,6 +64,19 @@ export async function logNoPhoneAfter21(date: string, success: boolean): Promise
   await dailyAPI.logNoPhoneAfter21(date, success);
 }
 
+export async function logVibeCoding(date: string, minutes: number): Promise<void> {
+  await dailyAPI.logVibeCoding(date, minutes);
+}
+
+export async function logHouseholdChores(date: string, count: number): Promise<void> {
+  await dailyAPI.logHouseholdChores(date, count);
+}
+
+// 👇 NOWA FUNKCJA
+export async function logVitamins(date: string, taken: boolean): Promise<void> {
+  await dailyAPI.logVitamins(date, taken);
+}
+
 export async function saveDailyLog(log: Partial<DailyLog>): Promise<void> {
   const date = log.date || new Date().toISOString().split('T')[0];
   if (log.reading_minutes !== undefined && log.reading_minutes > 0) {
@@ -77,6 +90,16 @@ export async function saveDailyLog(log: Partial<DailyLog>): Promise<void> {
   }
   if (log.no_phone_after_21 !== undefined) {
     await logNoPhoneAfter21(date, log.no_phone_after_21 === 1);
+  }
+  if (log.vibe_coding_minutes !== undefined && log.vibe_coding_minutes > 0) {
+    await logVibeCoding(date, log.vibe_coding_minutes);
+  }
+  if (log.household_chores !== undefined && log.household_chores > 0) {
+    await logHouseholdChores(date, log.household_chores);
+  }
+  // 👇 Obsługa zapisu witamin
+  if (log.vitamins !== undefined) {
+    await logVitamins(date, log.vitamins === 1);
   }
 }
 

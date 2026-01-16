@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Training, DailyLog } from '../types';
-import { Dumbbell, Flame, Heart, Zap, AlertTriangle, Sparkles, Check, Book, Wind, Droplets, Phone, X } from 'lucide-react';
+import { 
+  Dumbbell, Flame, Heart, Zap, AlertTriangle, Sparkles, Check, 
+  Book, Wind, Droplets, Phone, X, 
+  Code2, Home, Pill, Trophy 
+} from 'lucide-react';
 import { GoalModal } from './GoalModal';
 import { getTodayLog } from '../utils/storage';
 import { PageHeader } from './PageHeader';
@@ -25,10 +29,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ trainings, dailyLogs, onRe
         water_glasses: 0,
         kefir_glasses: 0,
         no_phone_after_21: 0,
+        vibe_coding_minutes: 0,
+        household_chores: 0,
+        vitamins: 0
       });
     };
     loadTodayLog();
-  }, []);
+  }, [dailyLogs]);
 
   const totalKcal = trainings.reduce((acc, t) => acc + (t.calories || 0), 0);
   const avgHr = trainings.length
@@ -42,25 +49,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ trainings, dailyLogs, onRe
     ? Math.floor((new Date().getTime() - new Date(lastTraining.date).getTime()) / (1000 * 3600 * 24))
     : 999;
 
+  // Definicja celów
   const goals = [
-    {
-      id: 'reading',
-      label: 'Czytanie',
-      icon: Book,
-      count: todayLog?.reading_minutes || 0,
-      goal: 60,
-      color: 'bg-blue-500',
-      iconColor: 'text-blue-400',
-    },
-    {
-      id: 'kefir',
-      label: 'Kefir',
-      icon: Wind,
-      count: todayLog?.kefir_glasses || 0,
-      goal: 2,
-      color: 'bg-yellow-500',
-      iconColor: 'text-yellow-400',
-    },
+    // Rząd 1
     {
       id: 'water',
       label: 'Nawodnienie',
@@ -71,13 +62,50 @@ export const Dashboard: React.FC<DashboardProps> = ({ trainings, dailyLogs, onRe
       iconColor: 'text-cyan-400',
     },
     {
-      id: 'discipline',
-      label: 'Dyscyplina',
-      icon: Zap,
-      count: todayLog?.discipline_score || 0,
-      goal: 100,
-      color: 'bg-green-500',
-      iconColor: 'text-green-400',
+      id: 'vitamins',
+      label: 'Witaminy',
+      icon: Pill,
+      count: (todayLog?.vitamins || 0) === 1 ? 1 : 0,
+      goal: 1,
+      color: 'bg-rose-500',
+      iconColor: 'text-rose-400',
+    },
+    {
+      id: 'chores',
+      label: 'Obowiązki domowe',
+      icon: Home,
+      count: todayLog?.household_chores || 0,
+      goal: 1,
+      color: 'bg-orange-500',
+      iconColor: 'text-orange-400',
+    },
+    // Rząd 2
+    {
+      id: 'reading',
+      label: 'Czytanie',
+      icon: Book,
+      count: todayLog?.reading_minutes || 0,
+      goal: 60,
+      color: 'bg-blue-500',
+      iconColor: 'text-blue-400',
+    },
+    {
+      id: 'vibe-coding',
+      label: 'Vibe Coding',
+      icon: Code2,
+      count: todayLog?.vibe_coding_minutes || 0,
+      goal: 120,
+      color: 'bg-indigo-500',
+      iconColor: 'text-indigo-400',
+    },
+    {
+      id: 'kefir',
+      label: 'Kefir',
+      icon: Wind,
+      count: todayLog?.kefir_glasses || 0,
+      goal: 2,
+      color: 'bg-yellow-500',
+      iconColor: 'text-yellow-400',
     },
     {
       id: 'no-phone',
@@ -90,19 +118,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ trainings, dailyLogs, onRe
     },
   ];
 
+  // Automatyczne obliczanie Dyscypliny
+  const totalGoalsCount = goals.length;
+  const completedGoalsCount = goals.filter(g => g.count >= g.goal).length;
+  const disciplineRate = Math.round((completedGoalsCount / totalGoalsCount) * 100);
+
   const aiMessages = [
     'Świetnie trzymasz dyscyplinę! Pamiętaj o regularnych treningach - ciało Ci podziękuje!',
-    'Czytanie rozszerza umysł, trening wzmacnia ciało. Połączenie obu to recepta na sukces!',
-    'Nawodnienie to fundament zdrowia. Pij regularnie i czuj się lepiej!',
-    'Kefir + treningi = magiczna kombinacja dla zdrowia!',
-    'Brak telefonu po 21 to dar dla Twojego snu. Doskonale radzisz sobie z dyscypliną!',
-    'Czytanie to życie! Każda przeczytana strona to nowa wiedza. Dalej tak!',
-    'Każdych 30 minut czytania to inwestycja w Twój umysł. Naprawdę to docenia!',
-    'Twoje komórki dziękują za każdy łyk wody! Tak trzymaj!',
-    'Każdy trening to krok bliżej do lepszej wersji siebie!',
-    'Endorfiny czekają. Doskonały trening dzisiaj!',
-    'Zamiast czekać na zmianę, tworzysz zmianę. To jest siła!',
-    'Dyscyplina to wolność. A Ty jesteś wolny!',
+    'Vibe Coding to Twój czas flow. Ciesz się nim!',
+    'Porządek w domu to porządek w głowie. Zrób jedno małe zadanie!',
+    'Witaminy wzięte? Zdrowie to inwestycja!',
   ];
 
   const randomAIMessage = aiMessages[Math.floor(Math.random() * aiMessages.length)];
@@ -115,64 +140,79 @@ export const Dashboard: React.FC<DashboardProps> = ({ trainings, dailyLogs, onRe
   };
 
   return (
-    <div className="space-y-3 xl:space-y-4 pb-20 xl:pb-0 animate-in fade-in duration-500">
+    <div className="space-y-4 pb-10 animate-in fade-in duration-500 max-w-6xl mx-auto">
       <PageHeader title="Dashboard" />
 
       {/* AI Coach */}
       {showAICoach && (
-        <div className="sticky top-0 z-40 bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30 rounded-lg p-3 xl:p-4 mb-4">
-          <div className="flex items-start gap-2 xl:gap-3">
-            <Sparkles className="text-purple-400 w-4 h-4 xl:w-5 xl:h-5 mt-0.5 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-purple-300 mb-0.5 text-xs xl:text-sm">AI Coach</h3>
-              <p className="text-xs xl:text-sm text-gray-200 break-words">"{randomAIMessage}"</p>
-            </div>
-            <button
-              onClick={() => setShowAICoach(false)}
-              className="text-gray-500 hover:text-gray-300 flex-shrink-0"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+        <div className="relative bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-lg p-3 flex items-center gap-3">
+          <Sparkles className="text-purple-400 w-5 h-5 flex-shrink-0" />
+          <p className="text-sm text-gray-200 flex-1">"{randomAIMessage}"</p>
+          <button onClick={() => setShowAICoach(false)} className="text-gray-500 hover:text-gray-300">
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
       {/* KPI Grid */}
-      <div className="grid grid-cols-4 gap-2 xl:gap-3">
-        <StatCard icon={<Dumbbell className="w-10 h-10 xl:w-14 xl:h-14 text-orange-400" />} label="Treningi" value={trainings.length} />
-        <StatCard icon={<Flame className="w-10 h-10 xl:w-14 xl:h-14 text-orange-500" />} label="Suma kcal" value={totalKcal} />
-        <StatCard icon={<Heart className="w-10 h-10 xl:w-14 xl:h-14 text-red-500" />} label="Śr. tętno" value={avgHr} />
-        <StatCard icon={<Zap className="w-10 h-10 xl:w-14 xl:h-14 text-yellow-400" />} label="Best efekt" value={bestEffect.toFixed(1)} />
+      <div className="grid grid-cols-4 gap-3">
+        <StatCard icon={<Dumbbell className="w-8 h-8 text-orange-400" />} label="Treningi" value={trainings.length} />
+        <StatCard icon={<Flame className="w-8 h-8 text-orange-500" />} label="Suma kcal" value={totalKcal} />
+        <StatCard icon={<Heart className="w-8 h-8 text-red-500" />} label="Śr. tętno" value={avgHr} />
+        <StatCard icon={<Zap className="w-8 h-8 text-yellow-400" />} label="Best efekt" value={bestEffect.toFixed(1)} />
       </div>
 
-      {/* Last Training */}
-      <div className="text-sm xl:text-base">
-        <h3 className="font-bold mb-1">Ostatni trening</h3>
-        <p className="text-xs xl:text-sm text-gray-500">
+      {/* Alerts & Last Training */}
+      <div className="flex gap-3 items-stretch text-sm">
+        {daysSinceLast > 2 && (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2 flex items-center gap-2 text-red-200 shadow-sm">
+            <AlertTriangle className="w-4 h-4 text-red-400" />
+            <span>Dni bez ruchu: <strong className="text-red-400">{daysSinceLast}</strong></span>
+          </div>
+        )}
+        
+        <div className="flex-1 bg-[#1c1c1e] border border-white/5 rounded-lg px-4 py-2 flex items-center justify-between text-gray-400 shadow-sm">
+          <span className="font-semibold text-gray-300">Ostatni trening:</span>
           {lastTraining ? (
-            <>
-              {new Date(lastTraining.date).toLocaleString('pl-PL')} • {lastTraining.calories} kcal • śr HR {lastTraining.avg_hr} • TE {lastTraining.training_effect}
-            </>
+            <span>{new Date(lastTraining.date).toLocaleDateString()} • {lastTraining.calories} kcal • TE {lastTraining.training_effect}</span>
           ) : (
-            'Brak danych jeszcze.'
+            <span>Brak danych</span>
           )}
-        </p>
-      </div>
-
-      {/* Alerts */}
-      {daysSinceLast > 2 && (
-        <div className="bg-[#1c1c1e] border border-orange-500/20 rounded-lg p-2 xl:p-3 flex items-center space-x-2 text-xs xl:text-sm">
-          <AlertTriangle className="text-orange-500 w-4 h-4 xl:w-5 xl:h-5 flex-shrink-0" />
-          <p className="font-semibold">
-            Dni bez ruchu: <span className="text-red-500">{daysSinceLast}</span> — czas wrócić do gry!
-          </p>
         </div>
-      )}
+      </div>
 
       {/* Today's Goals */}
       <div>
-        <h3 className="font-bold mb-2 text-sm xl:text-base">Dzisiejsze Cele</h3>
-        <div className="grid grid-cols-2 xl:grid-cols-3 gap-2 xl:gap-3">
+        <h3 className="font-bold mb-2 text-base">Dzisiejsze Cele</h3>
+        <div className="grid grid-cols-4 gap-3">
+          
+          {/* 
+            🏆 SPECIAL CARD: DYSCYPLINA (Auto-calculated) 
+            Distinct style: Golden/Yellow gradient + Trophy icon
+          */}
+          <div className="relative overflow-hidden rounded-lg p-3 border shadow-md bg-gradient-to-br from-yellow-900/40 to-yellow-600/10 border-yellow-500/40">
+            {/* Background Progress Bar for Discipline */}
+            <div 
+              className="absolute bottom-0 left-0 h-1 bg-yellow-500 transition-all duration-700 ease-out" 
+              style={{ width: `${disciplineRate}%` }} 
+            />
+            
+            <div className="flex items-start justify-between mb-2">
+              <div className="p-1.5 rounded-md bg-yellow-500/20 text-yellow-400">
+                <Trophy className="w-5 h-5" />
+              </div>
+              <span className="text-xs text-yellow-500/80 font-mono font-bold tracking-widest">{disciplineRate}%</span>
+            </div>
+            
+            <div className="space-y-0.5 mt-auto">
+               <p className="text-xs font-medium text-yellow-200/70 uppercase tracking-wide">Skuteczność</p>
+               <p className="text-xl font-bold text-white leading-none tracking-tight">
+                Dyscyplina
+               </p>
+            </div>
+          </div>
+
+          {/* Regular Goals */}
           {goals.map(goal => {
             const IconComponent = goal.icon;
             const isCompleted = goal.count >= goal.goal;
@@ -182,30 +222,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ trainings, dailyLogs, onRe
               <button
                 key={goal.id}
                 onClick={() => setSelectedGoal(goal.id)}
-                className={`rounded-lg p-3 xl:p-4 text-left transition cursor-pointer group ${
+                className={`relative overflow-hidden rounded-lg p-3 text-left transition cursor-pointer border shadow-sm group ${
                   isCompleted
-                    ? 'bg-gradient-to-br from-green-600/30 to-green-700/30 border border-green-500/30'
-                    : 'bg-[#1c1c1e] border border-white/10 hover:border-white/30'
+                    ? 'bg-green-900/10 border-green-500/30'
+                    : 'bg-[#1c1c1e] border-white/5 hover:border-white/20'
                 }`}
               >
-                <div className="flex justify-between items-start mb-2">
-                  <IconComponent className={`w-8 h-8 xl:w-9 xl:h-9 ${isCompleted ? 'text-green-400' : goal.iconColor}`} />
-                  <span className={`text-xs xl:text-sm font-semibold ${isCompleted ? 'text-green-400' : 'text-gray-400'}`}>
-                    {goal.count}/{goal.goal}
-                  </span>
-                </div>
-                <p className={`font-semibold mb-1 text-xs xl:text-sm ${isCompleted ? 'text-green-300' : 'text-white'}`}>{goal.label}</p>
+                {/* Background Progress Bar */}
+                <div 
+                  className={`absolute bottom-0 left-0 h-1 transition-all duration-500 ${isCompleted ? 'bg-green-500' : goal.color}`} 
+                  style={{ width: `${progress}%` }} 
+                />
 
-                <div className={`h-1.5 rounded-full ${goal.color} opacity-60 group-hover:opacity-100 transition`} style={{ width: `${progress}%` }} />
-
-                {isCompleted ? (
-                  <div className="flex items-center gap-1 mt-1 text-green-400 text-xs font-semibold">
-                    <Check className="w-3 h-3" />
-                    <span>OK!</span>
+                <div className="flex items-start justify-between mb-2">
+                  <div className={`p-1.5 rounded-md ${isCompleted ? 'bg-green-500/20 text-green-400' : 'bg-white/5 ' + goal.iconColor}`}>
+                    <IconComponent className="w-5 h-5" />
                   </div>
-                ) : (
-                  <p className="text-xs text-gray-500 mt-1">{Math.round(progress)}%</p>
-                )}
+                  {isCompleted ? (
+                    <Check className="w-4 h-4 text-green-400" />
+                  ) : (
+                    <span className="text-xs text-gray-500 font-mono">{Math.round(progress)}%</span>
+                  )}
+                </div>
+                
+                <div className="space-y-0.5">
+                   <p className={`text-xs font-medium truncate ${isCompleted ? 'text-green-300' : 'text-gray-400'}`}>{goal.label}</p>
+                   <p className="text-lg font-bold text-white leading-none">
+                    {goal.count} <span className="text-xs text-gray-500 font-normal">/ {goal.goal}</span>
+                   </p>
+                </div>
               </button>
             );
           })}
@@ -225,9 +270,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ trainings, dailyLogs, onRe
 };
 
 const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string | number }> = ({ icon, label, value }) => (
-  <div className="bg-[#1c1c1e] rounded-lg p-2 xl:p-4 flex flex-col items-center justify-center space-y-0.5 xl:space-y-1 aspect-square">
+  <div className="bg-[#1c1c1e] rounded-lg p-4 flex flex-col items-center justify-center space-y-1 border border-white/5 shadow-sm hover:border-white/10 transition">
     {icon}
-    <span className="text-[9px] xl:text-xs text-gray-400 font-medium whitespace-nowrap">{label}</span>
-    <span className="text-lg xl:text-2xl font-bold">{value}</span>
+    <span className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">{label}</span>
+    <span className="text-2xl font-bold text-white">{value}</span>
   </div>
 );

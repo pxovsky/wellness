@@ -179,6 +179,50 @@ def log_no_phone_after_21():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/daily/vibe_coding', methods=['POST'])
+def log_vibe_coding():
+    """Log vibe coding minutes"""
+    try:
+        data = request.json
+        if not data or 'date' not in data or 'minutes' not in data:
+            return jsonify({"error": "Missing date or minutes"}), 400
+
+        storage.log_vibe_coding(data['date'], data['minutes'])
+        return jsonify({"status": "success"}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/daily/chores', methods=['POST'])
+def log_household_chores():
+    """Log household chores count"""
+    try:
+        data = request.json
+        if not data or 'date' not in data or 'count' not in data:
+            return jsonify({"error": "Missing date or count"}), 400
+
+        storage.log_household_chores(data['date'], data['count'])
+        return jsonify({"status": "success"}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# 👇 NOWY ENDPOINT
+@app.route('/api/daily/vitamins', methods=['POST'])
+def log_vitamins():
+    """Log vitamins taken"""
+    try:
+        data = request.json
+        if not data or 'date' not in data or 'taken' not in data:
+            return jsonify({"error": "Missing date or taken"}), 400
+
+        taken = 1 if data['taken'] else 0
+        storage.log_vitamins(data['date'], taken)
+        return jsonify({"status": "success"}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/daily/<log_date>', methods=['GET'])
 def get_daily_log(log_date):
     """Get daily log for specific date"""
@@ -193,6 +237,10 @@ def get_daily_log(log_date):
                 "no_phone_after_21": 0,
                 "discipline_score": None,
                 "mood_score": None,
+                "vibe_coding_minutes": 0,
+                "household_chores": 0,
+                # 👇 Domyślna wartość
+                "vitamins": 0
             }), 200
 
         return jsonify(log), 200

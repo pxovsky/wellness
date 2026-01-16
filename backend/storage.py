@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime, date, timedelta
 from typing import List, Optional, Tuple
 
+
 DB_PATH = "wellness.db"
 
 
@@ -27,6 +28,9 @@ class DailyLog:
     no_phone_after_21: int  # 1 = yes, 0 = no
     discipline_score: Optional[int] = None
     mood_score: Optional[int] = None
+    vibe_coding_minutes: int = 0
+    household_chores: int = 0
+    vitamins: int = 0
 
 
 def connect():
@@ -37,7 +41,7 @@ def connect():
 
 
 def init_db():
-    """Initialize database with all required tables"""
+    """Initialize database with all required tables and auto-migrations"""
     with connect() as con:
         cur = con.cursor()
 
@@ -68,10 +72,30 @@ def init_db():
             )
         """)
 
+        # --- AUTOMATYCZNA MIGRACJA KOLUMN ---
+        cur.execute("PRAGMA table_info(daily_logs)")
+        existing_columns = [row[1] for row in cur.fetchall()]
+
+        # Lista nowych kolumn do dodania, jeśli ich nie ma
+        new_columns = [
+            ("vibe_coding_minutes", "INTEGER DEFAULT 0"),
+            ("household_chores", "INTEGER DEFAULT 0"),
+            ("vitamins", "INTEGER DEFAULT 0")
+        ]
+
+        for col_name, col_def in new_columns:
+            if col_name not in existing_columns:
+                print(f"🛠️ Migracja: Dodaję brakującą kolumnę '{col_name}'...")
+                try:
+                    cur.execute(f"ALTER TABLE daily_logs ADD COLUMN {col_name} {col_def}")
+                except Exception as e:
+                    print(f"⚠️ Błąd migracji kolumny {col_name}: {e}")
+
         con.commit()
 
 
 # ========== TRAININGS ==========
+
 
 def add_training(date: str, duration_min: int, calories: int, avg_hr: int, max_hr: int, training_effect: float, notes: str = "") -> int:
     """Add new training, return training ID"""
@@ -135,6 +159,7 @@ def get_last_training_date() -> Optional[str]:
 
 # ========== DAILY LOGS ==========
 
+
 def log_reading(reading_date: str, minutes: int) -> None:
     """Log reading for a day"""
     with connect() as con:
@@ -183,17 +208,78 @@ def log_no_phone_after_21(log_date: str, success: int) -> None:
         con.commit()
 
 
+def log_vibe_coding(log_date: str, minutes: int) -> None:
+    """Log vibe coding minutes"""
+    with connect() as con:
+        cur = con.cursor()
+        cur.execute("""
+            INSERT INTO daily_logs (date, vibe_coding_minutes)
+            VALUES (?, ?)
+            ON CONFLICT(date) DO UPDATE SET vibe_coding_minutes = ?
+        """, (log_date, minutes, minutes))
+        con.commit()
+
+
+def log_household_chores(log_date: str, count: int) -> None:
+    """Log household chores count"""
+    with connect() as con:
+        cur = con.cursor()
+        cur.execute("""
+            INSERT INTO daily_logs (date, household_chores)
+            VALUES (?, ?)
+            ON CONFLICT(date) DO UPDATE SET household_chores = ?
+        """, (log_date, count, count))
+        con.commit()
+
+
+def log_vitamins(log_date: str, taken: int) -> None:
+    """Log vitamins taken (1=yes, 0=no)"""
+    with connect() as con:
+        cur = con.cursor()
+        cur.execute("""
+            INSERT INTO daily_logs (date, vitamins)
+            VALUES (?, ?)
+            ON CONFLICT(date) DO UPDATE SET vitamins = ?
+        """, (log_date, taken, taken))
+        con.commit()
+
+
 def get_daily_log(log_date: str) -> Optional[dict]:
     """Get daily log for specific date"""
     with connect() as con:
         cur = con.cursor()
         cur.execute("""
-            SELECT date, reading_minutes, water_glasses, kefir_glasses, no_phone_after_21, discipline_score, mood_score
+            SELECT 
+                date, 
+                reading_minutes, 
+                water_glasses, 
+                kefir_glasses, 
+                no_phone_after_21, 
+                discipline_score, 
+                mood_score,
+                vibe_coding_minutes,
+                household_chores,
+                vitamins
             FROM daily_logs
             WHERE date = ?
         """, (log_date,))
         row = cur.fetchone()
-        return dict(row) if row else None
+        
+        if not row:
+            return None
+            
+        return {
+            "date": row["date"],
+            "reading_minutes": row["reading_minutes"],
+            "water_glasses": row["water_glasses"],
+            "kefir_glasses": row["kefir_glasses"],
+            "no_phone_after_21": row["no_phone_after_21"],
+            "discipline_score": row["discipline_score"],
+            "mood_score": row["mood_score"],
+            "vibe_coding_minutes": row["vibe_coding_minutes"] or 0,
+            "household_chores": row["household_chores"] or 0,
+            "vitamins": row["vitamins"] or 0
+        }
 
 
 def get_daily_logs(start_date: str, end_date: str) -> List[dict]:
@@ -201,15 +287,34 @@ def get_daily_logs(start_date: str, end_date: str) -> List[dict]:
     with connect() as con:
         cur = con.cursor()
         cur.execute("""
-            SELECT date, reading_minutes, water_glasses, kefir_glasses, no_phone_after_21, discipline_score, mood_score
+            SELECT 
+                date, 
+                reading_minutes, 
+                water_glasses, 
+                kefir_glasses, 
+                no_phone_after_21, 
+                discipline_score, 
+                mood_score,
+                vibe_coding_minutes,
+                household_chores,
+                vitamins
             FROM daily_logs
             WHERE date BETWEEN ? AND ?
             ORDER BY date DESC
         """, (start_date, end_date))
-        return [dict(row) for row in cur.fetchall()]
+        
+        result = []
+        for row in cur.fetchall():
+            d = dict(row)
+            d["vibe_coding_minutes"] = d["vibe_coding_minutes"] or 0
+            d["household_chores"] = d["household_chores"] or 0
+            d["vitamins"] = d["vitamins"] or 0
+            result.append(d)
+        return result
 
 
 # ========== STATS & STREAKS ==========
+
 
 def days_since_last_training() -> int:
     """Days since last training (0 if today, 1 if yesterday, etc.)"""
@@ -292,14 +397,14 @@ def get_compliance_rate(days: int = 7) -> int:
     with connect() as con:
         cur = con.cursor()
 
-        # Count days with any activity
+        # Count days with any activity (including new goals)
         start_date = (date.today() - timedelta(days=days)).isoformat()
         end_date = date.today().isoformat()
 
         cur.execute("""
             SELECT COUNT(*) FROM daily_logs
             WHERE date BETWEEN ? AND ?
-            AND (reading_minutes > 0 OR water_glasses > 0 OR kefir_glasses > 0 OR no_phone_after_21 = 1)
+            AND (reading_minutes > 0 OR water_glasses > 0 OR kefir_glasses > 0 OR no_phone_after_21 = 1 OR vibe_coding_minutes > 0 OR household_chores > 0 OR vitamins = 1)
         """, (start_date, end_date))
         active_days = cur.fetchone()[0]
 

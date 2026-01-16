@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field, validator
 from datetime import datetime
 from typing import Optional
 
+
 class TrainingCreateRequest(BaseModel):
     dt: str = Field(..., description="DateTime in format YYYY-MM-DD HH:MM")
     duration_min: int = Field(gt=0, le=300)
@@ -22,6 +23,7 @@ class TrainingCreateRequest(BaseModel):
         except ValueError: raise ValueError('DateTime format error')
         return v
 
+
 class TrainingResponse(BaseModel):
     id: int
     dt: str
@@ -32,10 +34,16 @@ class TrainingResponse(BaseModel):
     training_effect: float
     notes: str
 
+
 class DailyLogCreateRequest(BaseModel):
     date: str
     reading: Optional[int] = Field(None, ge=0, le=999)
     kefir: Optional[int] = Field(None, ge=0, le=500)
+    # Nowe pola
+    vibe_coding_minutes: Optional[int] = Field(None, ge=0, le=1440) # Max 24h
+    household_chores: Optional[int] = Field(None, ge=0, le=50)      # Max 50 zadań
+    vitamins: Optional[int] = Field(None, ge=0, le=1)               # 0 lub 1
+
 
 class DailyLogResponse(BaseModel):
     date: str
@@ -43,6 +51,11 @@ class DailyLogResponse(BaseModel):
     kefir: Optional[int]
     streak_reading: int
     streak_kefir: int
+    # Nowe pola
+    vibe_coding_minutes: Optional[int]
+    household_chores: Optional[int]
+    vitamins: Optional[int]
+
 
 class ErrorResponse(BaseModel):
     error: str
