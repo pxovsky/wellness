@@ -154,24 +154,41 @@ export const Dashboard: React.FC<DashboardProps> = ({ trainings, dailyLogs, onRe
         </div>
       )}
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-4 gap-3">
-        <StatCard icon={<Dumbbell className="w-8 h-8 text-orange-400" />} label="Treningi" value={trainings.length} />
-        <StatCard icon={<Flame className="w-8 h-8 text-orange-500" />} label="Suma kcal" value={totalKcal} />
-        <StatCard icon={<Heart className="w-8 h-8 text-red-500" />} label="Śr. tętno" value={avgHr} />
-        <StatCard icon={<Zap className="w-8 h-8 text-yellow-400" />} label="Best efekt" value={bestEffect.toFixed(1)} />
+      {/* KPI Grid - COMPACT ROW ON MOBILE */}
+      {/* grid-cols-4 on ALL screens, but icons/text shrink on mobile */}
+      <div className="grid grid-cols-4 gap-2 md:gap-3">
+        <StatCard 
+          icon={<Dumbbell className="w-5 h-5 md:w-8 md:h-8 text-orange-400" />} 
+          label="Treningi" 
+          value={trainings.length} 
+        />
+        <StatCard 
+          icon={<Flame className="w-5 h-5 md:w-8 md:h-8 text-orange-500" />} 
+          label="Suma kcal" 
+          value={totalKcal} 
+        />
+        <StatCard 
+          icon={<Heart className="w-5 h-5 md:w-8 md:h-8 text-red-500" />} 
+          label="Śr. tętno" 
+          value={avgHr} 
+        />
+        <StatCard 
+          icon={<Zap className="w-5 h-5 md:w-8 md:h-8 text-yellow-400" />} 
+          label="Best efekt" 
+          value={bestEffect.toFixed(1)} 
+        />
       </div>
 
       {/* Alerts & Last Training */}
-      <div className="flex gap-3 items-stretch text-sm">
+      <div className="flex gap-2 md:gap-3 items-stretch text-sm flex-col md:flex-row">
         {daysSinceLast > 2 && (
-          <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2 flex items-center gap-2 text-red-200 shadow-sm">
+          <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2 flex items-center gap-2 text-red-200 shadow-sm justify-center md:justify-start">
             <AlertTriangle className="w-4 h-4 text-red-400" />
             <span>Dni bez ruchu: <strong className="text-red-400">{daysSinceLast}</strong></span>
           </div>
         )}
         
-        <div className="flex-1 bg-[#1c1c1e] border border-white/5 rounded-lg px-4 py-2 flex items-center justify-between text-gray-400 shadow-sm">
+        <div className="flex-1 bg-[#1c1c1e] border border-white/5 rounded-lg px-4 py-2 flex items-center justify-between text-gray-400 shadow-sm text-xs md:text-sm">
           <span className="font-semibold text-gray-300">Ostatni trening:</span>
           {lastTraining ? (
             <span>{new Date(lastTraining.date).toLocaleDateString()} • {lastTraining.calories} kcal • TE {lastTraining.training_effect}</span>
@@ -184,7 +201,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ trainings, dailyLogs, onRe
       {/* Today's Goals */}
       <div>
         <h3 className="font-bold mb-2 text-base">Dzisiejsze Cele</h3>
-        <div className="grid grid-cols-4 gap-3">
+        {/* Responsive Grid: 2 cols on mobile, 4 on desktop */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
           
           {/* 
             🏆 SPECIAL CARD: DYSCYPLINA (Auto-calculated) 
@@ -205,8 +223,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ trainings, dailyLogs, onRe
             </div>
             
             <div className="space-y-0.5 mt-auto">
-               <p className="text-xs font-medium text-yellow-200/70 uppercase tracking-wide">Skuteczność</p>
-               <p className="text-xl font-bold text-white leading-none tracking-tight">
+               <p className="text-[10px] md:text-xs font-medium text-yellow-200/70 uppercase tracking-wide">Skuteczność</p>
+               <p className="text-lg md:text-xl font-bold text-white leading-none tracking-tight">
                 Dyscyplina
                </p>
             </div>
@@ -269,10 +287,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ trainings, dailyLogs, onRe
   );
 };
 
+// StatCard Component - Responsive Design
 const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string | number }> = ({ icon, label, value }) => (
-  <div className="bg-[#1c1c1e] rounded-lg p-4 flex flex-col items-center justify-center space-y-1 border border-white/5 shadow-sm hover:border-white/10 transition">
-    {icon}
-    <span className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">{label}</span>
-    <span className="text-2xl font-bold text-white">{value}</span>
+  <div className="bg-[#1c1c1e] rounded-lg p-2 md:p-4 flex flex-col items-center justify-center space-y-0.5 md:space-y-1 border border-white/5 shadow-sm hover:border-white/10 transition h-full">
+    {/* Icon Wrapper for consistent alignment */}
+    <div className="mb-0.5 md:mb-1">{icon}</div>
+    {/* Label - tiny on mobile, normal on desktop */}
+    <span className="text-[9px] md:text-[10px] text-gray-400 uppercase tracking-wide font-medium text-center leading-tight truncate w-full">
+      {label}
+    </span>
+    {/* Value - slightly smaller on mobile to prevent wrap */}
+    <span className="text-lg md:text-2xl font-bold text-white leading-none">
+      {value}
+    </span>
   </div>
 );

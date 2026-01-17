@@ -1,113 +1,78 @@
 import { Training, DailyLog } from '../types';
-import { trainingsAPI, dailyAPI, dashboardAPI } from '../services/api';
 
-export async function getTrainings(limit: number = 200): Promise<Training[]> {
-  try {
-    return await trainingsAPI.getAll(limit);
-  } catch (e) {
-    console.error('Error fetching trainings:', e);
-    return [];
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+export const getTrainings = async (limit: number = 20): Promise<Training[]> => {
+  const response = await fetch(`${API_URL}/trainings?limit=${limit}`);
+  if (!response.ok) throw new Error('Failed to fetch trainings');
+  return response.json();
+};
+
+export const saveTraining = async (training: Omit<Training, 'id'>): Promise<any> => {
+  const response = await fetch(`${API_URL}/trainings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(training),
+  });
+  if (!response.ok) throw new Error('Failed to save training');
+  return response.json();
+};
+
+export const getDailyLogs = async (limit: number = 30): Promise<DailyLog[]> => {
+  const response = await fetch(`${API_URL}/daily-logs?limit=${limit}`);
+  if (!response.ok) throw new Error('Failed to fetch daily logs');
+  return response.json();
+};
+
+export const getTodayLog = async (): Promise<DailyLog | null> => {
+  const today = new Date().toISOString().split('T')[0];
+  const logs = await getDailyLogs(1); 
+  return logs.find(l => l.date === today) || null;
+};
+
+export const getDailyLogForDate = async (date: string): Promise<DailyLog | null> => {
+    // Backend powinien mieć endpoint, ale tymczasowo pobieramy więcej i filtrujemy
+    const logs = await getDailyLogs(60); 
+    return logs.find(l => l.date === date) || null;
+}
+
+/**
+ * Zapisuje log dzienny.
+ * Obsługuje granularne zapisywanie pojedynczych metryk.
+ * 
+ * @param metricOrLog - nazwa endpointu (np. 'reading', 'water')
+ * @param data - dane do wysłania (np. { minutes: 30 })
+ * @param date - data logu (YYYY-MM-DD)
+ */
+export const saveDailyLog = async (
+  metricOrLog: string | DailyLog, 
+  data?: any, 
+  date?: string
+): Promise<any> => {
+  
+  // Jeśli ktoś próbuje wywołać ze starym sposobem (cały obiekt), rzucamy błąd lub ostrzeżenie
+  if (typeof metricOrLog !== 'string') {
+     console.error("Użycie saveDailyLog z całym obiektem nie jest już wspierane. Użyj granularnych endpointów.");
+     throw new Error("Legacy saveDailyLog usage deprecated");
   }
-}
 
-export async function saveTraining(t: Omit<Training, 'id'>): Promise<void> {
-  await trainingsAPI.add(t);
-}
+  // Nowe użycie: saveDailyLog('reading', { minutes: 30 }, '2024-01-01')
+  const endpoint = metricOrLog;
+  const payload = { ...data, date };
 
-export async function deleteTraining(id: number): Promise<void> {
-  await trainingsAPI.delete(id);
-}
+  const response = await fetch(`${API_URL}/daily/${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
 
-export async function getDailyLogs(days: number = 7): Promise<DailyLog[]> {
-  try {
-    const end_date = new Date().toISOString().split('T')[0];
-    const start_date = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    return await dailyAPI.getLogs(start_date, end_date);
-  } catch (e) {
-    console.error('Error fetching daily logs:', e);
-    return [];
-  }
-}
+  if (!response.ok) throw new Error(`Failed to save daily log for ${endpoint}`);
+  return response.json();
+};
 
-export async function getTodayLog(): Promise<DailyLog | null> {
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    return await dailyAPI.getLog(today);
-  } catch (e) {
-    console.error('Error fetching today log:', e);
-    return null;
-  }
-}
-
-export async function getDailyLogForDate(date: string): Promise<DailyLog | null> {
-  try {
-    return await dailyAPI.getLog(date);
-  } catch (e) {
-    console.error(`Error fetching log for ${date}:`, e);
-    return null;
-  }
-}
-
-export async function logReading(date: string, minutes: number): Promise<void> {
-  await dailyAPI.logReading(date, minutes);
-}
-
-export async function logWater(date: string, glasses: number): Promise<void> {
-  await dailyAPI.logWater(date, glasses);
-}
-
-export async function logKefir(date: string, glasses: number): Promise<void> {
-  await dailyAPI.logKefir(date, glasses);
-}
-
-export async function logNoPhoneAfter21(date: string, success: boolean): Promise<void> {
-  await dailyAPI.logNoPhoneAfter21(date, success);
-}
-
-export async function logVibeCoding(date: string, minutes: number): Promise<void> {
-  await dailyAPI.logVibeCoding(date, minutes);
-}
-
-export async function logHouseholdChores(date: string, count: number): Promise<void> {
-  await dailyAPI.logHouseholdChores(date, count);
-}
-
-// 👇 NOWA FUNKCJA
-export async function logVitamins(date: string, taken: boolean): Promise<void> {
-  await dailyAPI.logVitamins(date, taken);
-}
-
-export async function saveDailyLog(log: Partial<DailyLog>): Promise<void> {
-  const date = log.date || new Date().toISOString().split('T')[0];
-  if (log.reading_minutes !== undefined && log.reading_minutes > 0) {
-    await logReading(date, log.reading_minutes);
-  }
-  if (log.water_glasses !== undefined && log.water_glasses > 0) {
-    await logWater(date, log.water_glasses);
-  }
-  if (log.kefir_glasses !== undefined && log.kefir_glasses > 0) {
-    await logKefir(date, log.kefir_glasses);
-  }
-  if (log.no_phone_after_21 !== undefined) {
-    await logNoPhoneAfter21(date, log.no_phone_after_21 === 1);
-  }
-  if (log.vibe_coding_minutes !== undefined && log.vibe_coding_minutes > 0) {
-    await logVibeCoding(date, log.vibe_coding_minutes);
-  }
-  if (log.household_chores !== undefined && log.household_chores > 0) {
-    await logHouseholdChores(date, log.household_chores);
-  }
-  // 👇 Obsługa zapisu witamin
-  if (log.vitamins !== undefined) {
-    await logVitamins(date, log.vitamins === 1);
-  }
-}
-
-export async function getDashboard() {
-  try {
-    return await dashboardAPI.get();
-  } catch (e) {
-    console.error('Error fetching dashboard:', e);
-    return null;
-  }
-}
+export const deleteTraining = async (id: number): Promise<void> => {
+  const response = await fetch(`${API_URL}/trainings/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete training');
+};
