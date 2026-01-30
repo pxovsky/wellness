@@ -2,7 +2,6 @@
 
 Szybka ściąga dla agenta AI. Przetestuj to jako pierwszą rzecz każdego ranka.
 
----
 
 ## ✅ PRE-SESSION CHECKLIST (5 minut)
 
@@ -28,7 +27,6 @@ Szybka ściąga dla agenta AI. Przetestuj to jako pierwszą rzecz każdego ranka
 Gotowy! Czym się dzisiaj zajmujemy?
 ```
 
----
 
 ## 📚 PLIK QUICK LOOKUP
 
@@ -58,7 +56,7 @@ Gotowy! Czym się dzisiaj zajmujemy?
 Frontend (http://localhost:5173)
     ↓ [Axios HTTP]
 Backend API (http://localhost:5000/api/*)
-    ↓ [SQLAlchemy ORM]
+    ↓ [Raw SQL / storage.py]
 SQLite Database (backend/wellness.db)
 ```
 

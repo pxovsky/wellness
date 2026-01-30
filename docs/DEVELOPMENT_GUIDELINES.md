@@ -2,7 +2,6 @@
 
 Praktyczne wskazania i best practices dla rozwoju aplikacji wellness. Dokumentacja dla zarówno agenta AI, jak i ludzi-developerów.
 
----
 
 ## 👀 OBSERWUJ TE RZECZY
 
@@ -48,14 +47,16 @@ const useFeature = () => {
 
 **Current Streaks:**
 ```python
-# backend/models.py
-class DailyLog(Base):
-    reading_minutes: int  # ← Reading streak
-    water_glasses: int    # ← Water streak
-    kefir_glasses: int    # ← Kefir streak
-    no_phone_after_21: bool  # ← No Phone streak
-    discipline_score: int  # Daily score 1-10
-    mood_score: int        # Daily score 1-10
+# backend/storage.py (Dataclass)
+@dataclass
+class DailyLog:
+    reading_minutes: int
+    water_glasses: int
+    kefir_glasses: int
+    no_phone_after_21: int  # 1=Yes, 0=No
+    vibe_coding_minutes: int
+    household_chores: int
+    vitamins: int           # 1=Yes, 0=No
 ```
 
 **ZAPAMIĘTAJ:**
@@ -254,10 +255,7 @@ class DailyLog(Base):
 **Current CORS config:**
 ```python
 # backend/app.py
-from flask_cors import CORS
-
-app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": ["localhost:3000", "localhost:5173"]}})
+CORS(app, origins=["http://localhost:3000", "http://localhost:5173", "http://localhost:*"])
 ```
 
 **ZAPAMIĘTAJ:**

@@ -65,6 +65,9 @@ Aplikacja śledzi:
 - **Water streak** (szklanki dziennie)
 - **No Phone After 21** (binary daily flag)
 - **Discipline & Mood Score** (daily subjective scores)
+- **Vibe Coding** (minuty dziennie)
+- **Household Chores** (liczba zadań)
+- **Vitamins** (binary daily flag)
 
 Każda zmiana w data model lub daily log musi **zachować te kategorie** lub wyraźnie je refactor.
 
