@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  ChevronLeft, ChevronRight, X, 
-  Book, Droplets, Pill, Phone, Code2, Home, Wind, Trophy 
+  ChevronLeft, ChevronRight, X,
+  Book, Droplets, Pill, Phone, Code2, Home, Wind
 } from 'lucide-react';
 import { DailyLog } from '../types';
 import { PageHeader } from './PageHeader';
@@ -44,12 +44,12 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
     const log = dailyLogs.find(l => l.date === dateStr);
     if (!log) return false;
     return (
-      (log.reading_minutes && log.reading_minutes > 0) ||
+      (log.reading_minutes && log.reading_minutes >= 60) ||
       (log.water_glasses && log.water_glasses >= 6) ||
-      (log.kefir_glasses && log.kefir_glasses > 0) ||
-      (log.vibe_coding_minutes && log.vibe_coding_minutes > 0) ||
+      (log.kefir_glasses && log.kefir_glasses >= 2) ||
+      (log.vibe_coding_minutes && log.vibe_coding_minutes >= 120) ||
       (log.no_phone_after_21 === 1) ||
-      (log.household_chores === 1) ||
+      (log.household_chores && log.household_chores > 0) ||
       (log.vitamins === 1)
     );
   };
@@ -58,12 +58,12 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
     if (!log) return 0;
     let score = 0;
     const total = 7; // Liczba wszystkich celów
-    if (log.reading_minutes && log.reading_minutes > 0) score++;
+    if (log.reading_minutes && log.reading_minutes >= 60) score++;
     if (log.water_glasses && log.water_glasses >= 6) score++;
-    if (log.kefir_glasses && log.kefir_glasses > 0) score++;
-    if (log.vibe_coding_minutes && log.vibe_coding_minutes > 0) score++;
+    if (log.kefir_glasses && log.kefir_glasses >= 2) score++;
+    if (log.vibe_coding_minutes && log.vibe_coding_minutes >= 120) score++;
     if (log.no_phone_after_21 === 1) score++;
-    if (log.household_chores === 1) score++;
+    if (log.household_chores && log.household_chores > 0) score++;
     if (log.vitamins === 1) score++;
     
     return Math.round((score / total) * 100);
@@ -77,14 +77,14 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
     achievements.push({
       icon: <Book className="w-5 h-5" />,
       label: `Czytanie: ${log.reading_minutes || 0} min`,
-      achieved: (log.reading_minutes || 0) > 0
+      achieved: (log.reading_minutes || 0) >= 60
     });
 
     // Vibe Coding
     achievements.push({
       icon: <Code2 className="w-5 h-5" />,
       label: `Vibe Coding: ${log.vibe_coding_minutes || 0} min`,
-      achieved: (log.vibe_coding_minutes || 0) > 0
+      achieved: (log.vibe_coding_minutes || 0) >= 120
     });
 
     // Woda
@@ -98,7 +98,7 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
     achievements.push({
       icon: <Wind className="w-5 h-5" />,
       label: `Kefir: ${log.kefir_glasses || 0} porcji`,
-      achieved: (log.kefir_glasses || 0) > 0
+      achieved: (log.kefir_glasses || 0) >= 2
     });
 
     // Witaminy
@@ -111,8 +111,8 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
     // Obowiązki
     achievements.push({
       icon: <Home className="w-5 h-5" />,
-      label: log.household_chores === 1 ? 'Obowiązki: Tak' : 'Obowiązki: Nie',
-      achieved: log.household_chores === 1
+      label: `Obowiązki: ${log.household_chores || 0}`,
+      achieved: (log.household_chores || 0) > 0
     });
 
     // Telefon
@@ -157,7 +157,7 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
       
       // Booleans
       await saveDailyLog('no-phone', { success: selectedLog.no_phone_after_21 === 1 }, selectedDate);
-      await saveDailyLog('chores', { completed: selectedLog.household_chores }, selectedDate);
+      await saveDailyLog('chores', { count: selectedLog.household_chores }, selectedDate);
       await saveDailyLog('vitamins', { taken: selectedLog.vitamins }, selectedDate);
 
       onLogsUpdated();
@@ -348,13 +348,21 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
                      onChange={e => setSelectedLog({ ...selectedLog, kefir_glasses: parseInt(e.target.value) || 0 })}
                    />
                  </div>
+                 <div className="space-y-1.5">
+                   <label className="text-xs font-bold text-gray-400 uppercase">Obowiązki (zadania)</label>
+                   <input
+                     type="number"
+                     className="w-full bg-black/40 border border-white/10 rounded-lg p-2.5 text-white focus:border-orange-500 focus:outline-none"
+                     value={selectedLog.household_chores || 0}
+                     onChange={e => setSelectedLog({ ...selectedLog, household_chores: parseInt(e.target.value) || 0 })}
+                   />
+                 </div>
               </div>
 
               {/* Sekcja: Przełączniki */}
               <div className="space-y-2 pt-2 border-t border-white/5">
                 {[
                   { label: 'Witaminy', key: 'vitamins' as keyof DailyLog, color: 'text-rose-400', icon: <Pill className="w-4 h-4" /> },
-                  { label: 'Obowiązki domowe', key: 'household_chores' as keyof DailyLog, color: 'text-orange-400', icon: <Home className="w-4 h-4" /> },
                   { label: 'Brak telefonu po 21', key: 'no_phone_after_21' as keyof DailyLog, color: 'text-purple-400', icon: <Phone className="w-4 h-4" /> },
                 ].map(item => (
                   <button

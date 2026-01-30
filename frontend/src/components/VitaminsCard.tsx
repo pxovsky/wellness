@@ -11,7 +11,7 @@ export function VitaminsCard({
   initialValue = 0,
   onSuccess
 }: VitaminsCardProps) {
-  const { vitamins, logVitamins, loading, error } = useVitamins();
+  const { logVitamins, loading, error } = useVitamins();
   const [value, setValue] = React.useState<0 | 1>(initialValue);
 
   useEffect(() => {

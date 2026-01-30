@@ -32,6 +32,19 @@ class DailyLog:
     household_chores: int = 0
     vitamins: int = 0
 
+@dataclass
+class Task:
+    id: int
+    title: str
+    description: str
+    priority: int  # 1=Low, 2=Medium, 3=High
+    is_completed: int  # 0=No, 1=Yes
+    due_date: Optional[str] = None
+    reminder_date: Optional[str] = None
+    created_at: str = ""
+    position: int = 0
+
+
 
 def connect():
     """Open database connection"""
@@ -68,7 +81,25 @@ def init_db():
                 kefir_glasses INTEGER DEFAULT 0,
                 no_phone_after_21 INTEGER DEFAULT 0,
                 discipline_score INTEGER,
-                mood_score INTEGER
+                mood_score INTEGER,
+                vibe_coding_minutes INTEGER DEFAULT 0,
+                household_chores INTEGER DEFAULT 0,
+                vitamins INTEGER DEFAULT 0
+            )
+        """)
+
+        # Tasks table (To-Do)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                description TEXT DEFAULT '',
+                priority INTEGER DEFAULT 1,
+                due_date TEXT,
+                reminder_date TEXT,
+                is_completed INTEGER DEFAULT 0,
+                position INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """)
 
@@ -90,6 +121,22 @@ def init_db():
                     cur.execute(f"ALTER TABLE daily_logs ADD COLUMN {col_name} {col_def}")
                 except Exception as e:
                     print(f"⚠️ Błąd migracji kolumny {col_name}: {e}")
+
+        # --- MIGRACJA TASKS ---
+        cur.execute("PRAGMA table_info(tasks)")
+        existing_task_cols = [row[1] for row in cur.fetchall()]
+        
+        if "description" not in existing_task_cols:
+            cur.execute("ALTER TABLE tasks ADD COLUMN description TEXT DEFAULT ''")
+            
+        if "reminder_date" not in existing_task_cols:
+            cur.execute("ALTER TABLE tasks ADD COLUMN reminder_date TEXT")
+
+        if "position" not in existing_task_cols:
+            print("🛠️ Migracja: Dodaję kolumnę 'position' do tasks...")
+            cur.execute("ALTER TABLE tasks ADD COLUMN position INTEGER DEFAULT 0")
+            # Ustawiamy początkową kolejność wg ID
+            cur.execute("UPDATE tasks SET position = id")
 
         con.commit()
 
@@ -311,6 +358,71 @@ def get_daily_logs(start_date: str, end_date: str) -> List[dict]:
             d["vitamins"] = d["vitamins"] or 0
             result.append(d)
         return result
+
+
+# ========== TASKS (TO-DO) ==========
+
+def add_task(title: str, priority: int, due_date: Optional[str] = None, description: str = "", reminder_date: Optional[str] = None) -> int:
+    """Add new task"""
+    with connect() as con:
+        cur = con.cursor()
+        # Obliczamy nową pozycję (na końcu listy)
+        cur.execute("SELECT COALESCE(MAX(position), 0) FROM tasks")
+        max_pos = cur.fetchone()[0]
+        new_pos = max_pos + 1
+
+        cur.execute("""
+            INSERT INTO tasks (title, priority, due_date, description, reminder_date, position)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (title, priority, due_date, description, reminder_date, new_pos))
+        con.commit()
+        return cur.lastrowid
+
+def get_tasks() -> List[dict]:
+    """Get all tasks sorted by status, due_date, priority"""
+    with connect() as con:
+        cur = con.cursor()
+        # Sortowanie: Niezrobione pierwsze -> Pozycja (własna kolejność)
+        cur.execute("""
+            SELECT * FROM tasks 
+            ORDER BY is_completed ASC, 
+                     position ASC
+        """)
+        return [dict(row) for row in cur.fetchall()]
+
+def update_task(task_id: int, **kwargs) -> bool:
+    """Update task fields"""
+    valid_keys = {'title', 'priority', 'due_date', 'is_completed', 'description', 'reminder_date'}
+    updates = {k: v for k, v in kwargs.items() if k in valid_keys}
+    
+    if not updates:
+        return False
+    
+    query = "UPDATE tasks SET " + ", ".join(f"{k} = ?" for k in updates.keys()) + " WHERE id = ?"
+    params = list(updates.values()) + [task_id]
+    
+    with connect() as con:
+        cur = con.cursor()
+        cur.execute(query, params)
+        con.commit()
+        return cur.rowcount > 0
+
+def delete_task(task_id: int) -> bool:
+    """Delete task"""
+    with connect() as con:
+        cur = con.cursor()
+        cur.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+        con.commit()
+        return cur.rowcount > 0
+
+def reorder_tasks(task_ids: List[int]) -> None:
+    """Update position for a list of tasks"""
+    with connect() as con:
+        cur = con.cursor()
+        # Aktualizujemy pozycję dla każdego ID w liście
+        for index, task_id in enumerate(task_ids):
+            cur.execute("UPDATE tasks SET position = ? WHERE id = ?", (index, task_id))
+        con.commit()
 
 
 # ========== STATS & STREAKS ==========

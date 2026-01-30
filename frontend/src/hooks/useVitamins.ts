@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import axios from 'axios';
-import { ApiResponse, VitaminLogResponse } from '../types/api';
+import { ApiResponse, VitaminLogResponse } from '../types';
 
 export function useVitamins() {
   const [vitamins, setVitamins] = useState<0 | 1>(0);

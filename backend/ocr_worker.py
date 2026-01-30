@@ -39,7 +39,7 @@ def parse_screenshot(image_path: str) -> dict:
                 # Jeśli to sensowny czas treningu (np. < 5h), bierzemy
                 minutes = h * 60 + m
                 if 5 < minutes < 300: 
-                    data['duration'] = minutes
+                    data['duration_min'] = minutes
 
         # 3. EFEKT (szukamy 3.0)
         # Tesseract widzi "3 0 Poprawa" -> clean_line "30Poprawa"
@@ -47,7 +47,7 @@ def parse_screenshot(image_path: str) -> dict:
             # Szukamy cyfry na początku linii
             m = re.search(r'(\d)\s+(\d)', line) # Szukamy w ORYGINALNEJ linii ze spacjami
             if m:
-                data['effect'] = float(f"{m.group(1)}.{m.group(2)}")
+                data['training_effect'] = float(f"{m.group(1)}.{m.group(2)}")
         
         # 4. TĘTNO (141)
         # Szukamy "141" w clean_line, jeśli jest w pobliżu "ud./min"

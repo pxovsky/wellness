@@ -267,6 +267,68 @@ def get_daily_logs_range():
         return jsonify({"error": str(e)}), 500
 
 
+# ========== TASKS (TO-DO) ==========
+
+@app.route('/api/tasks', methods=['GET'])
+def get_tasks():
+    """Get all tasks"""
+    try:
+        tasks = storage.get_tasks()
+        return jsonify(tasks), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/tasks', methods=['POST'])
+def add_task():
+    """Add new task"""
+    try:
+        data = request.json
+        if not data or 'title' not in data:
+            return jsonify({"error": "Missing title"}), 400
+        
+        task_id = storage.add_task(
+            title=data['title'],
+            description=data.get('description', ''),
+            priority=data.get('priority', 1),
+            due_date=data.get('due_date'),
+            reminder_date=data.get('reminder_date')
+        )
+        return jsonify({"status": "success", "id": task_id}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/tasks/<int:task_id>', methods=['PUT'])
+def update_task(task_id):
+    """Update task"""
+    try:
+        data = request.json
+        storage.update_task(task_id, **data)
+        return jsonify({"status": "success"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/tasks/<int:task_id>', methods=['DELETE'])
+def delete_task(task_id):
+    """Delete task"""
+    try:
+        storage.delete_task(task_id)
+        return jsonify({"status": "success"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/tasks/reorder', methods=['POST'])
+def reorder_tasks():
+    """Reorder tasks"""
+    try:
+        data = request.json
+        if not data or 'task_ids' not in data:
+            return jsonify({"error": "Missing task_ids"}), 400
+        
+        storage.reorder_tasks(data['task_ids'])
+        return jsonify({"status": "success"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # ========== HEALTH CHECK ==========
 
 @app.route('/api/health', methods=['GET'])

@@ -1,5 +1,5 @@
-import { Training, DailyLog } from '../types';
-import { trainingsAPI, dailyAPI, dashboardAPI } from '../services/api';
+import { Training, DailyLog, Task } from '../types';
+import { trainingsAPI, dailyAPI, dashboardAPI, tasksAPI } from '../services/api';
 
 // --- Treningi ---
 
@@ -181,4 +181,26 @@ export async function getDashboard() {
     console.error('Error fetching dashboard:', e);
     return null;
   }
+}
+
+// --- Tasks ---
+
+export async function getTasks(): Promise<Task[]> {
+  return await tasksAPI.getAll();
+}
+
+export async function addTask(task: Partial<Task>): Promise<void> {
+  await tasksAPI.add(task);
+}
+
+export async function updateTask(id: number, updates: Partial<Task>): Promise<void> {
+  await tasksAPI.update(id, updates);
+}
+
+export async function deleteTask(id: number): Promise<void> {
+  await tasksAPI.delete(id);
+}
+
+export async function reorderTasks(taskIds: number[]): Promise<void> {
+  await tasksAPI.reorder(taskIds);
 }

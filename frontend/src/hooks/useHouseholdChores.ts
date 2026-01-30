@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import axios from 'axios';
-import { ApiResponse, ChoresLogResponse } from '../types/api';
+import { ApiResponse, ChoresLogResponse } from '../types';
 
 export function useHouseholdChores() {
   const [chores, setChores] = useState<number>(0);

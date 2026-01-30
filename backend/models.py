@@ -37,8 +37,12 @@ class TrainingResponse(BaseModel):
 
 class DailyLogCreateRequest(BaseModel):
     date: str
-    reading: Optional[int] = Field(None, ge=0, le=999)
-    kefir: Optional[int] = Field(None, ge=0, le=500)
+    reading_minutes: Optional[int] = Field(None, ge=0, le=1440)
+    water_glasses: Optional[int] = Field(None, ge=0, le=50)
+    kefir_glasses: Optional[int] = Field(None, ge=0, le=50)
+    no_phone_after_21: Optional[int] = Field(None, ge=0, le=1)
+    discipline_score: Optional[int] = Field(None, ge=1, le=10)
+    mood_score: Optional[int] = Field(None, ge=1, le=10)
     # Nowe pola
     vibe_coding_minutes: Optional[int] = Field(None, ge=0, le=1440) # Max 24h
     household_chores: Optional[int] = Field(None, ge=0, le=50)      # Max 50 zadań
@@ -47,15 +51,46 @@ class DailyLogCreateRequest(BaseModel):
 
 class DailyLogResponse(BaseModel):
     date: str
-    reading: Optional[int]
-    kefir: Optional[int]
+    reading_minutes: Optional[int]
+    water_glasses: Optional[int]
+    kefir_glasses: Optional[int]
+    no_phone_after_21: Optional[int]
+    discipline_score: Optional[int]
+    mood_score: Optional[int]
     streak_reading: int
     streak_kefir: int
+    streak_water: int
+    streak_no_phone: int
     # Nowe pola
     vibe_coding_minutes: Optional[int]
     household_chores: Optional[int]
     vitamins: Optional[int]
 
+
+class TaskCreateRequest(BaseModel):
+    title: str = Field(..., min_length=1)
+    description: Optional[str] = ""
+    priority: int = Field(1, ge=1, le=3) # 1=Low, 2=Medium, 3=High
+    due_date: Optional[str] = None
+    reminder_date: Optional[str] = None
+
+class TaskUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    priority: Optional[int] = Field(None, ge=1, le=3)
+    due_date: Optional[str] = None
+    reminder_date: Optional[str] = None
+    is_completed: Optional[int] = Field(None, ge=0, le=1)
+
+class TaskResponse(BaseModel):
+    id: int
+    title: str
+    description: str
+    priority: int
+    due_date: Optional[str]
+    reminder_date: Optional[str]
+    is_completed: int
+    created_at: str
 
 class ErrorResponse(BaseModel):
     error: str

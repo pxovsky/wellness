@@ -11,7 +11,7 @@ export function HouseholdChoresCard({
   initialValue = 0,
   onSuccess
 }: HouseholdChoresCardProps) {
-  const { chores, logChores, loading, error } = useHouseholdChores();
+  const { logChores, loading, error } = useHouseholdChores();
   const [value, setValue] = React.useState(initialValue);
 
   useEffect(() => {

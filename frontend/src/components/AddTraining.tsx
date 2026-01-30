@@ -34,6 +34,10 @@ export const AddTraining: React.FC<{ onSaved: () => void }> = ({ onSaved }) => {
         setError('Data jest wymagana');
         return;
       }
+      if (new Date(training.date) > new Date()) {
+        setError('Data treningu nie może być z przyszłości');
+        return;
+      }
       if (training.duration_min <= 0) {
         setError('Czas treningu musi być > 0');
         return;
@@ -57,7 +61,7 @@ export const AddTraining: React.FC<{ onSaved: () => void }> = ({ onSaved }) => {
   };
 
   return (
-    <div className="space-y-4 pb-20 xl:pb-0 px-4 xl:px-8">
+    <div className="space-y-4 pb-20 xl:pb-0 px-4 xl:px-8 max-w-2xl mx-auto">
       <PageHeader title="Dodaj Trening" />
 
       {error && (
@@ -81,6 +85,7 @@ export const AddTraining: React.FC<{ onSaved: () => void }> = ({ onSaved }) => {
           <input
             type="datetime-local"
             value={training.date}
+            max={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
             onChange={(e) => setTraining({ ...training, date: e.target.value })}
             className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
           />
@@ -160,20 +165,22 @@ export const AddTraining: React.FC<{ onSaved: () => void }> = ({ onSaved }) => {
         </div>
 
         {/* Przycisk */}
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white font-bold py-3 rounded-lg transition flex items-center justify-center gap-2"
-        >
-          {saving ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Zapisywanie...
-            </>
-          ) : (
-            'Zapisz Trening'
-          )}
-        </button>
+        <div className="flex justify-center pt-2">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full md:w-auto md:px-12 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white font-bold py-3 rounded-lg transition flex items-center justify-center gap-2"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Zapisywanie...
+              </>
+            ) : (
+              'Zapisz Trening'
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

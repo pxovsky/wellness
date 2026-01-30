@@ -32,6 +32,7 @@ export const Charts: React.FC<ChartsProps> = ({ trainings, dailyLogs = [] }) => 
     // Ilość
     water: log.water_glasses || 0,
     kefir: log.kefir_glasses || 0,
+    chores: log.household_chores || 0,
   }));
 
   // Compliance pie chart - sumowanie dni z osiągniętym celem
@@ -157,7 +158,7 @@ export const Charts: React.FC<ChartsProps> = ({ trainings, dailyLogs = [] }) => 
 
           {/* Wykres Ilości: Woda + Kefir */}
           <div className="bg-[#1c1c1e] p-4 rounded-xl border border-white/10 shadow-sm">
-            <h4 className="text-xs font-semibold text-gray-400 mb-4 uppercase tracking-wider">Nawodnienie & Probiotyki</h4>
+            <h4 className="text-xs font-semibold text-gray-400 mb-4 uppercase tracking-wider">Ilości (Woda, Kefir, Obowiązki)</h4>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={dailyChartData}>
@@ -173,6 +174,7 @@ export const Charts: React.FC<ChartsProps> = ({ trainings, dailyLogs = [] }) => 
                   <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px' }} />
                   <Bar dataKey="water" fill="#06b6d4" name="Woda (szkl.)" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="kefir" fill="#eab308" name="Kefir (szkl.)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="chores" fill="#f97316" name="Obowiązki" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

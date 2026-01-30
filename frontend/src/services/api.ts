@@ -1,5 +1,5 @@
 ﻿import axios from 'axios';
-import { Training, DailyLog } from '../types';
+import { Training, Task } from '../types';
 
 const API = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
@@ -28,4 +28,12 @@ export const dailyAPI = {
   logHouseholdChores: (date: string, count: number) => API.post('/daily/chores', { date, count }).then(r => r.data),
   // 👇 NOWA METODA
   logVitamins: (date: string, taken: boolean) => API.post('/daily/vitamins', { date, taken }).then(r => r.data)
+};
+
+export const tasksAPI = {
+  getAll: () => API.get('/tasks').then(r => r.data),
+  add: (task: Partial<Task>) => API.post('/tasks', task).then(r => r.data),
+  update: (id: number, updates: Partial<Task>) => API.put(`/tasks/${id}`, updates).then(r => r.data),
+  delete: (id: number) => API.delete(`/tasks/${id}`).then(r => r.data),
+  reorder: (taskIds: number[]) => API.post('/tasks/reorder', { task_ids: taskIds }).then(r => r.data)
 };

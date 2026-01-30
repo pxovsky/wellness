@@ -5,14 +5,17 @@ import { AddTraining } from './components/AddTraining';
 import { History } from './components/History';
 import { Charts } from './components/Charts';
 import { Calendar } from './components/Calendar';
-import { View, Training, DailyLog } from './types';
-import { getTrainings, getDailyLogs } from './utils/storage';
-import { Home, Plus, Calendar as CalendarIcon, History as HistoryIcon, BarChart3, AlertCircle, Loader2 } from 'lucide-react';
+import { Tasks } from './components/Tasks';
+import { View, Training, DailyLog, Task } from './types';
+import { getTrainings, getDailyLogs, getTasks } from './utils/storage';
+import { Home, Plus, Calendar as CalendarIcon, History as HistoryIcon, BarChart3, AlertCircle, Loader2, CheckSquare } from 'lucide-react';
+
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('Dashboard');
   const [trainings, setTrainings] = useState<Training[]>([]);
   const [dailyLogs, setDailyLogs] = useState<DailyLog[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1280);
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -21,12 +24,14 @@ const App: React.FC = () => {
     try {
       setIsLoading(true);
       setApiError(null);
-      const [trainingsData, logsData] = await Promise.all([
+      const [trainingsData, logsData, tasksData] = await Promise.all([
         getTrainings(200),
-        getDailyLogs(30)
+        getDailyLogs(30),
+        getTasks()
       ]);
       setTrainings(trainingsData);
       setDailyLogs(logsData);
+      setTasks(tasksData);
     } catch (e: any) {
       setApiError(e.message || 'Failed to load data');
       console.error('Error loading data:', e);
@@ -44,6 +49,8 @@ const App: React.FC = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const uncompletedTasksCount = tasks.filter(t => t.is_completed === 0).length;
 
   const renderView = () => {
     if (isLoading && currentView === 'Dashboard') {
@@ -84,6 +91,8 @@ const App: React.FC = () => {
         return <Charts trainings={trainings} dailyLogs={dailyLogs} />;
       case 'Calendar':
         return <Calendar dailyLogs={dailyLogs} onLogsUpdated={loadData} />;
+      case 'Tasks':
+        return <Tasks onTasksChange={loadData} />;
       default:
         return <Dashboard trainings={trainings} dailyLogs={dailyLogs} onRefresh={loadData} />;
     }
@@ -94,6 +103,7 @@ const App: React.FC = () => {
     { label: 'Dodaj Trening', icon: <Plus className="w-5 h-5" />, view: 'AddTraining' as View },
     { label: 'Kalendarz', icon: <CalendarIcon className="w-5 h-5" />, view: 'Calendar' as View },
     { label: 'Historia', icon: <HistoryIcon className="w-5 h-5" />, view: 'History' as View },
+    { label: 'Zadania', icon: <CheckSquare className="w-5 h-5" />, view: 'Tasks' as View },
     { label: 'Wykresy', icon: <BarChart3 className="w-5 h-5" />, view: 'Charts' as View },
   ];
 
@@ -116,7 +126,14 @@ const App: React.FC = () => {
                     : 'text-gray-400 hover:bg-white/10 hover:text-white'
                 }`}
               >
-                {item.icon} {item.label}
+                <div className="flex items-center gap-2">
+                  {item.icon} {item.label}
+                </div>
+                {item.view === 'Tasks' && uncompletedTasksCount > 0 && (
+                  <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    {uncompletedTasksCount}
+                  </span>
+                )}
               </button>
             ))}
           </nav>
@@ -124,7 +141,7 @@ const App: React.FC = () => {
       )}
       <div className="flex-1 flex flex-col">
         {isMobile ? (
-          <Layout currentView={currentView} onViewChange={setCurrentView}>
+          <Layout currentView={currentView} onViewChange={setCurrentView} uncompletedTasksCount={uncompletedTasksCount}>
             {renderView()}
           </Layout>
         ) : (
