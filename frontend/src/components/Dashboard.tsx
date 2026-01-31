@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Training, DailyLog } from '../types';
+import { Training, DailyLog, Task } from '../types';
 import { 
   Dumbbell, Flame, Heart, Zap, AlertTriangle, Sparkles, Check, 
   Book, Wind, Droplets, Phone, X, 
-  Code2, Home, Pill, Trophy 
+  Code2, Home, Pill, Trophy, Calendar, Clock, CheckSquare
 } from 'lucide-react';
 import { GoalModal } from './GoalModal';
-import { getTodayLog } from '../utils/storage';
+import { getTodayLog, getTasks } from '../utils/storage';
 import { PageHeader } from './PageHeader';
 
 interface DashboardProps {
@@ -19,11 +19,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ trainings, dailyLogs, onRe
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
   const [showAICoach, setShowAICoach] = useState(true);
   const [todayLog, setTodayLog] = useState<DailyLog | null>(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
 
   useEffect(() => {
-    const loadTodayLog = async () => {
-      const log = await getTodayLog();
-      setTodayLog(log || {
+    const loadData = async () => {
+      const [logData, tasksData] = await Promise.all([
+        getTodayLog(),
+        getTasks().catch(() => []) // Obsługa błędu, jeśli endpoint nie odpowiada
+      ]);
+
+      setTodayLog(logData || {
         date: new Date().toISOString().split('T')[0],
         reading_minutes: 0,
         water_glasses: 0,
@@ -33,8 +38,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ trainings, dailyLogs, onRe
         household_chores: 0,
         vitamins: 0
       });
+      setTasks(tasksData);
     };
-    loadTodayLog();
+    loadData();
   }, [dailyLogs]);
 
   const totalKcal = trainings.reduce((acc, t) => acc + (t.calories || 0), 0);
@@ -138,6 +144,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ trainings, dailyLogs, onRe
     setSelectedGoal(null);
     onRefresh();
   };
+
+  // Filtrowanie zadań na Dziś i Jutro
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  
+  const dayAfterTomorrow = new Date(tomorrow);
+  dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 1);
+
+  const upcomingTasks = tasks.filter(t => {
+    if (t.is_completed) return false;
+    if (!t.due_date) return false;
+    const d = new Date(t.due_date);
+    return d >= now && d < dayAfterTomorrow;
+  }).sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
 
   return (
     <div className="space-y-4 pb-10 animate-in fade-in duration-500 max-w-6xl">
@@ -274,6 +297,45 @@ export const Dashboard: React.FC<DashboardProps> = ({ trainings, dailyLogs, onRe
           })}
         </div>
       </div>
+
+      {/* Harmonogram / Nadchodzące Zadania */}
+      {upcomingTasks.length > 0 && (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <h3 className="font-bold mb-2 text-base flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-blue-400" />
+            Harmonogram
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
+            {upcomingTasks.map(task => {
+              const taskDate = new Date(task.due_date!);
+              const isToday = taskDate.getDate() === new Date().getDate();
+              
+              return (
+                <div 
+                  key={task.id} 
+                  className={`bg-[#1c1c1e] border ${isToday ? 'border-blue-500/40' : 'border-white/5'} rounded-lg p-3 flex items-start gap-3 shadow-sm hover:border-white/20 transition`}
+                >
+                  <div className={`p-1.5 rounded-md flex-shrink-0 ${isToday ? 'bg-blue-500/20 text-blue-400' : 'bg-white/5 text-gray-400'}`}>
+                    <CheckSquare className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start gap-2">
+                      <p className={`text-sm font-medium truncate ${isToday ? 'text-white' : 'text-gray-300'}`}>{task.title}</p>
+                      <span className="text-[10px] text-gray-500 bg-white/5 px-1.5 py-0.5 rounded flex-shrink-0">
+                        {taskDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                      {isToday ? <span className="text-blue-400 font-medium">Dziś</span> : 'Jutro'} 
+                      {task.priority === 3 && <span className="text-red-400 ml-1">• Wysoki priorytet</span>}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {selectedGoal && todayLog && (
         <GoalModal
