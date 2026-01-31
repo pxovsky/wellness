@@ -1,5 +1,3 @@
-import React from 'react';
-
 export const Logo = ({ className = "w-12 h-12" }: { className?: string }) => (
   <div className={`relative flex items-center justify-center animate-in fade-in zoom-in-90 duration-1000 transition-transform hover:-translate-y-1 hover:duration-300 ${className}`}>
     {/* 1. TŁO GLASSMORPHISM (To robi robotę "premium") */}

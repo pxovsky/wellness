@@ -7,7 +7,7 @@ import storage
 app = Flask(__name__)
 
 # CORS - allow frontend on localhost:3000 (or any port during dev)
-CORS(app, origins=["http://localhost:3000", "http://localhost:5173", "http://localhost:*"])
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Initialize database on startup
 @app.before_request
