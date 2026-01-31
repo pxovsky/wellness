@@ -90,19 +90,20 @@ def init_db():
             )
         """)
 
-        # Tasks table (To-Do)
+        # Tasks table (To-Do list)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS tasks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT NOT NULL,
                 description TEXT DEFAULT '',
                 priority INTEGER DEFAULT 1,
+                is_completed INTEGER DEFAULT 0,
                 due_date TEXT,
                 reminder_date TEXT,
-                is_completed INTEGER DEFAULT 0,
-                is_pinned INTEGER DEFAULT 0,
+                created_at TEXT,
                 position INTEGER DEFAULT 0,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                tags TEXT DEFAULT '',
+                is_pinned INTEGER DEFAULT 0
             )
         """)
 
@@ -371,45 +372,40 @@ def get_daily_logs(start_date: str, end_date: str) -> List[dict]:
         return result
 
 
-# ========== TASKS (TO-DO) ==========
+# ========== TASKS ==========
 
-def add_task(title: str, priority: int, due_date: Optional[str] = None, description: str = "", reminder_date: Optional[str] = None, tags: str = "", is_pinned: int = 0) -> int:
+def get_tasks() -> List[dict]:
+    """Get all tasks ordered by position"""
+    with connect() as con:
+        cur = con.cursor()
+        cur.execute("SELECT * FROM tasks ORDER BY is_pinned DESC, is_completed ASC, position ASC, created_at DESC")
+        return [dict(row) for row in cur.fetchall()]
+
+def add_task(title: str, description: str = "", priority: int = 1, due_date: str = None, reminder_date: str = None, tags: str = "", is_pinned: int = 0) -> int:
     """Add new task"""
     with connect() as con:
         cur = con.cursor()
-        # Obliczamy nową pozycję (na końcu listy)
-        cur.execute("SELECT COALESCE(MAX(position), 0) FROM tasks")
-        max_pos = cur.fetchone()[0]
-        new_pos = max_pos + 1
-
+        # Get next position
+        cur.execute("SELECT COALESCE(MAX(position), 0) + 1 FROM tasks")
+        position = cur.fetchone()[0]
+        
+        created_at = datetime.now().isoformat()
+        
         cur.execute("""
-            INSERT INTO tasks (title, priority, due_date, description, reminder_date, position, tags, is_pinned)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (title, priority, due_date, description, reminder_date, new_pos, tags, is_pinned))
+            INSERT INTO tasks (title, description, priority, is_completed, due_date, reminder_date, created_at, position, tags, is_pinned)
+            VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?)
+        """, (title, description, priority, due_date, reminder_date, created_at, position, tags, is_pinned))
         con.commit()
         return cur.lastrowid
 
-def get_tasks() -> List[dict]:
-    """Get all tasks sorted by status, due_date, priority"""
-    with connect() as con:
-        cur = con.cursor()
-        # Sortowanie: Niezrobione pierwsze -> Pozycja (własna kolejność)
-        cur.execute("""
-            SELECT * FROM tasks 
-            ORDER BY is_completed ASC, 
-                     is_pinned DESC,
-                     position ASC
-        """)
-        return [dict(row) for row in cur.fetchall()]
-
 def update_task(task_id: int, **kwargs) -> bool:
     """Update task fields"""
-    valid_keys = {'title', 'priority', 'due_date', 'is_completed', 'description', 'reminder_date', 'tags', 'is_pinned'}
-    updates = {k: v for k, v in kwargs.items() if k in valid_keys}
+    allowed_keys = {'title', 'description', 'priority', 'is_completed', 'due_date', 'reminder_date', 'position', 'tags', 'is_pinned'}
+    updates = {k: v for k, v in kwargs.items() if k in allowed_keys}
     
     if not updates:
         return False
-    
+        
     query = "UPDATE tasks SET " + ", ".join(f"{k} = ?" for k in updates.keys()) + " WHERE id = ?"
     params = list(updates.values()) + [task_id]
     
@@ -419,24 +415,21 @@ def update_task(task_id: int, **kwargs) -> bool:
         con.commit()
         return cur.rowcount > 0
 
-def delete_task(task_id: int) -> bool:
+def delete_task(task_id: int) -> None:
     """Delete task"""
     with connect() as con:
         cur = con.cursor()
         cur.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
         con.commit()
-        return cur.rowcount > 0
 
 def reorder_tasks(task_ids: List[int]) -> None:
-    """Update position for a list of tasks"""
+    """Update task positions based on list order"""
     with connect() as con:
         cur = con.cursor()
-        # Aktualizujemy pozycję dla każdego ID w liście
-        for index, task_id in enumerate(task_ids):
-            cur.execute("UPDATE tasks SET position = ? WHERE id = ?", (index, task_id))
+        for pos, task_id in enumerate(task_ids):
+            cur.execute("UPDATE tasks SET position = ? WHERE id = ?", (pos, task_id))
         con.commit()
-
-
+        
 # ========== STATS & STREAKS ==========
 
 

@@ -37,3 +37,8 @@ Thumbs.db
 /backend/wellness.db
 /frontend/.env.local
 /frontend/dist
+
+# Tests
+test.ps1
+backend/test_*.py
+backend/test_*.db

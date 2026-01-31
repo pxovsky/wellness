@@ -2,7 +2,7 @@
 import { Training, DailyLog, Task } from '../types';
 
 const API = axios.create({
-  baseURL: 'http://192.168.0.198:5000/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
   timeout: 10000
 });
 
@@ -37,4 +37,3 @@ export const tasksAPI = {
   delete: (id: number) => API.delete(`/tasks/${id}`).then(r => r.data),
   reorder: (taskIds: number[]) => API.post('/tasks/reorder', { task_ids: taskIds }).then(r => r.data)
 };
-
