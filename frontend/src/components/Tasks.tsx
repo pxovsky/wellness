@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Task } from '../types';
 import { getTasks, addTask, updateTask, deleteTask, reorderTasks } from '../utils/storage';
 import { PageHeader } from './PageHeader';
-import { Plus, Trash2, CheckCircle, Circle, Calendar, Flag, Loader2, Bell, Edit2, X, Check, GripVertical, Table, List, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Search, CalendarClock, Tag } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Circle, Calendar, Flag, Loader2, Bell, Edit2, X, Check, GripVertical, Table, List, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Search, CalendarClock, Tag, Pin } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -42,6 +42,7 @@ const getTagColor = (tag: string) => {
 interface TaskItemProps {
   task: Task;
   toggleTask: (task: Task) => void;
+  togglePin: (task: Task) => void;
   startEditing: (task: Task) => void;
   handleDelete: (id: number) => void;
   editingTaskId: number | null;
@@ -61,7 +62,7 @@ interface TaskItemProps {
 }
 
 const TaskItem: React.FC<TaskItemProps> = ({
-  task, toggleTask, startEditing, handleDelete, editingTaskId, editingTitle, setEditingTitle,
+  task, toggleTask, togglePin, startEditing, handleDelete, editingTaskId, editingTitle, setEditingTitle,
   editingDescription, setEditingDescription, editingTags, setEditingTags, cancelEditing, saveDescription, 
   getPriorityColor, getPriorityLabel, dragHandleProps, style, setNodeRef
 }) => {
@@ -72,7 +73,9 @@ const TaskItem: React.FC<TaskItemProps> = ({
       className={`group flex items-start gap-3 p-4 rounded-xl border transition-all ${
         task.is_completed
           ? 'bg-[#1c1c1e]/50 border-white/5 opacity-60'
-          : 'bg-[#1c1c1e] border-white/10 hover:border-white/20'
+          : task.is_pinned
+            ? 'bg-purple-500/10 border-purple-500/20 hover:border-purple-500/40'
+            : 'bg-[#1c1c1e] border-white/10 hover:border-white/20'
       }`}
     >
       {/* Drag Handle */}
@@ -173,6 +176,13 @@ const TaskItem: React.FC<TaskItemProps> = ({
 
       <div className="flex opacity-0 group-hover:opacity-100 transition-all">
         <button
+          onClick={() => togglePin(task)}
+          className={`p-2 hover:text-white ${task.is_pinned ? 'text-purple-400' : 'text-gray-500'}`}
+          title={task.is_pinned ? "Odepnij" : "Przypnij"}
+        >
+          <Pin className={`w-5 h-5 ${task.is_pinned ? 'fill-current' : ''}`} />
+        </button>
+        <button
           onClick={() => startEditing(task)}
             className="p-2 text-gray-500 hover:text-teal-500"
           title="Edytuj opis"
@@ -212,13 +222,33 @@ const SortableTaskItem: React.FC<TaskItemProps> = (props) => {
 };
 
 export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange }) => {
+  const toLocalISO = (date: Date) => {
+    const tzOffset = date.getTimezoneOffset() * 60000;
+    return (new Date(date.getTime() - tzOffset)).toISOString().slice(0, 16);
+  };
+
+  const getInitialDefaults = () => {
+    const now = new Date();
+    now.setMinutes(0, 0, 0);
+    now.setHours(now.getHours() + 1);
+
+    const defaultDue = toLocalISO(now);
+
+    const reminder = new Date(now);
+    reminder.setDate(reminder.getDate() - 1);
+    reminder.setHours(20, 0, 0, 0);
+    const defaultReminder = toLocalISO(reminder);
+
+    return { defaultDue, defaultReminder };
+  };
+
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskPriority, setNewTaskPriority] = useState<1 | 2 | 3>(1);
-  const [newTaskDate, setNewTaskDate] = useState('');
+  const [newTaskDate, setNewTaskDate] = useState(() => getInitialDefaults().defaultDue);
   const [newTaskDescription, setNewTaskDescription] = useState('');
-  const [newTaskReminder, setNewTaskReminder] = useState('');
+  const [newTaskReminder, setNewTaskReminder] = useState(() => getInitialDefaults().defaultReminder);
   const [newTaskTags, setNewTaskTags] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
@@ -231,9 +261,12 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: keyof Task; direction: 'asc' | 'desc' } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 5;
   const [isGrouped, setIsGrouped] = useState(true);
   const [deletingTaskId, setDeletingTaskId] = useState<number | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [tagInput, setTagInput] = useState('');
+  const [showTagSuggestions, setShowTagSuggestions] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -278,11 +311,13 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
       setNewTaskTitle('');
       setNewTaskDescription('');
       setNewTaskPriority(1);
-      setNewTaskDate('');
-      setNewTaskReminder('');
+      const defaults = getInitialDefaults();
+      setNewTaskDate(defaults.defaultDue);
+      setNewTaskReminder(defaults.defaultReminder);
       setNewTaskTags('');
       await loadTasks();
       onTasksChange?.();
+      setIsAddModalOpen(false);
     } catch (e) {
       console.error('Failed to add task', e);
     } finally {
@@ -304,6 +339,19 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
     } catch (e) {
       console.error('Failed to update task', e);
       loadTasks(); // Revert on error
+    }
+  };
+
+  const togglePin = async (task: Task) => {
+    const newPinnedStatus = task.is_pinned ? 0 : 1;
+    // Optimistic update
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, is_pinned: newPinnedStatus } : t));
+    try {
+      await updateTask(task.id, { is_pinned: newPinnedStatus });
+      onTasksChange?.();
+    } catch (e) {
+      console.error('Failed to toggle pin', e);
+      loadTasks();
     }
   };
 
@@ -395,6 +443,36 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
     return Array.from(tagsMap.entries()).sort((a, b) => b[1] - a[1]);
   }, [tasks]);
 
+  const availableTags = React.useMemo(() => allTags.map(([t]) => t), [allTags]);
+
+  const handleTagInputKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (tagInput.trim()) {
+        const currentTags = newTaskTags.split(',').map(t => t.trim()).filter(Boolean);
+        const newTag = tagInput.trim();
+        if (!currentTags.includes(newTag)) {
+          setNewTaskTags(currentTags.length > 0 ? `${currentTags.join(', ')}, ${newTag}` : newTag);
+        }
+        setTagInput('');
+      }
+    }
+  };
+
+  const addTag = (tag: string) => {
+    const currentTags = newTaskTags.split(',').map(t => t.trim()).filter(Boolean);
+    if (!currentTags.includes(tag)) {
+      setNewTaskTags(currentTags.length > 0 ? `${currentTags.join(', ')}, ${tag}` : tag);
+    }
+    setTagInput('');
+    setShowTagSuggestions(false);
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    const currentTags = newTaskTags.split(',').map(t => t.trim()).filter(Boolean);
+    setNewTaskTags(currentTags.filter(t => t !== tagToRemove).join(', '));
+  };
+
   const filteredTasks = React.useMemo(() => tasks.filter(t => {
     const matchesPriority = filterPriority === 0 || t.priority === filterPriority;
     const matchesSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase());
@@ -415,6 +493,11 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
     let sortableItems = [...filteredTasks];
     if (sortConfig !== null) {
       sortableItems.sort((a, b) => {
+        // Always prioritize pinned items
+        const pinA = a.is_pinned || 0;
+        const pinB = b.is_pinned || 0;
+        if (pinA !== pinB) return pinB - pinA;
+
         const aValue = a[sortConfig.key];
         const bValue = b[sortConfig.key];
 
@@ -426,6 +509,9 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
         if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
       });
+    } else {
+      // Default sort: Pinned first
+      sortableItems.sort((a, b) => (b.is_pinned || 0) - (a.is_pinned || 0));
     }
     return sortableItems;
   }, [filteredTasks, sortConfig]);
@@ -434,6 +520,7 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
     if (!isGrouped) return null;
 
     const groups = {
+      pinned: [] as Task[],
       overdue: [] as Task[],
       today: [] as Task[],
       tomorrow: [] as Task[],
@@ -452,6 +539,11 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
         groups.completed.push(t);
         return;
       }
+      if (t.is_pinned) {
+        groups.pinned.push(t);
+        return;
+      }
+
       if (!t.due_date) {
         groups.noDate.push(t);
         return;
@@ -496,128 +588,28 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
   };
 
   return (
-    <div className="animate-in fade-in duration-300 max-w-7xl mx-auto">
+    <div className="animate-in fade-in duration-300 max-w-7xl">
       <PageHeader title="Zadania" subtitle="Lista rzeczy do zrobienia" />
 
-      <div className="flex flex-col xl:flex-row gap-8 items-start">
-        {/* Sidebar - Tagi */}
-        <div className="w-full xl:w-64 flex-shrink-0 space-y-2 bg-[#1c1c1e] p-4 rounded-xl border border-white/10 xl:sticky xl:top-6">
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-            <Tag className="w-4 h-4" /> Filtruj po tagach
-          </h3>
-          
-          <button
-            onClick={() => setSelectedTag(null)}
-            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition flex justify-between items-center ${
-              selectedTag === null ? 'bg-teal-600 text-white' : 'text-gray-400 hover:bg-white/5 hover:text-white'
-            }`}
-          >
-            <span>Wszystkie</span>
-            <span className="bg-black/20 px-1.5 py-0.5 rounded text-xs">{tasks.length}</span>
-          </button>
-
-          {allTags.map(([tag, count]) => (
-            <button
-              key={tag}
-              onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition flex justify-between items-center ${
-                selectedTag === tag ? 'bg-teal-600 text-white' : 'text-gray-400 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <span className="truncate">#{tag}</span>
-              <span className="bg-black/20 px-1.5 py-0.5 rounded text-xs ml-2">{count}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="flex-1 w-full space-y-6 pb-20 xl:pb-0">
-          {/* Formularz dodawania */}
-      <form onSubmit={handleAddTask} className="bg-[#1c1c1e] p-4 rounded-xl border border-white/10 space-y-3">
-        <div className="space-y-3">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle(e.target.value)}
-              placeholder="Co masz do zrobienia?"
-              className="flex-1 bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-teal-500"
-            />
-            <button
-              type="submit"
-              disabled={isAdding || !newTaskTitle.trim()}
-              className="bg-teal-600 hover:bg-teal-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 rounded-lg flex items-center justify-center transition"
-            >
-              {isAdding ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-6 h-6" />}
-            </button>
-          </div>
-
-          <textarea
-            value={newTaskDescription}
-            onChange={(e) => setNewTaskDescription(e.target.value)}
-            placeholder="Opis zadania (opcjonalnie)"
-            className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-teal-500 resize-none h-20"
-          />
-        </div>
+      {/* Top Bar */}
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-6">
+        <button
+          onClick={() => setIsAddModalOpen(true)}
+          className="bg-teal-600 hover:bg-teal-500 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-bold transition shadow-lg shadow-teal-900/20"
+        >
+          <Plus className="w-5 h-5" />
+          Dodaj zadanie
+        </button>
         
-        <div className="flex flex-wrap gap-3 pb-1">
-          <div className="flex-1 min-w-[140px]">
-            <label className="block text-[10px] text-gray-500 mb-1 px-1">Priorytet</label>
-            <select
-              value={newTaskPriority}
-              onChange={(e) => setNewTaskPriority(parseInt(e.target.value) as 1 | 2 | 3)}
-              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-teal-500"
-            >
-              <option value={1}>Niski</option>
-              <option value={2}>Średni</option>
-              <option value={3}>Wysoki</option>
-            </select>
-          </div>
-
-          <div className="flex-1 min-w-[140px]">
-            <label className="block text-[10px] text-gray-500 mb-1 px-1">Termin wykonania</label>
-            <input
-              type="datetime-local"
-              value={newTaskDate}
-              onChange={(e) => setNewTaskDate(e.target.value)}
-              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-teal-500"
-            />
-          </div>
-
-          <div className="flex-1 min-w-[140px]">
-            <label className="block text-[10px] text-gray-500 mb-1 px-1">Przypomnienie</label>
-            <input
-              type="datetime-local"
-              value={newTaskReminder}
-              onChange={(e) => setNewTaskReminder(e.target.value)}
-              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-teal-500"
-            />
-          </div>
-
-          <div className="flex-1 min-w-[140px]">
-            <label className="block text-[10px] text-gray-500 mb-1 px-1">Tagi</label>
-            <input
-              type="text"
-              value={newTaskTags}
-              onChange={(e) => setNewTaskTags(e.target.value)}
-              placeholder="np. praca, dom, pilne"
-              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-teal-500"
-            />
-          </div>
-        </div>
-      </form>
-
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-2 gap-4">
-        <h3 className="text-lg font-bold text-white">Lista zadań</h3>
-        
-        <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
-          <div className="relative w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full xl:w-auto flex-wrap xl:flex-nowrap">
+          <div className="relative w-full xl:w-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
             <input 
               type="text" 
               placeholder="Szukaj..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-[#1c1c1e] border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-teal-500 w-full sm:w-40"
+              className="bg-[#1c1c1e] border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-teal-500 w-full xl:w-48"
             />
           </div>
 
@@ -648,12 +640,23 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
           <select
             value={filterPriority}
             onChange={(e) => setFilterPriority(parseInt(e.target.value))}
-            className="bg-[#1c1c1e] border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-teal-500 flex-1 sm:flex-none"
+            className="bg-[#1c1c1e] border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-teal-500 flex-1 xl:flex-none"
           >
-            <option value={0}>Wszystkie priorytety</option>
+            <option value={0}>Priorytet: Wszystkie</option>
             <option value={3}>Wysoki</option>
             <option value={2}>Średni</option>
             <option value={1}>Niski</option>
+          </select>
+
+          <select
+            value={selectedTag || ''}
+            onChange={(e) => setSelectedTag(e.target.value || null)}
+            className="bg-[#1c1c1e] border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-teal-500 flex-1 xl:flex-none max-w-[150px]"
+          >
+            <option value="">Tagi: Wszystkie</option>
+            {allTags.map(([tag, count]) => (
+              <option key={tag} value={tag}>{tag} ({count})</option>
+            ))}
           </select>
 
           {(searchQuery || filterPriority !== 0 || selectedTag) && (
@@ -669,7 +672,7 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
       </div>
 
       {/* Lista zadań */}
-      <div className="space-y-2">
+      <div className="space-y-2 pb-20 xl:pb-0">
         {loading ? (
           <div className="text-center py-10 text-gray-500">Ładowanie zadań...</div>
         ) : filteredTasks.length === 0 ? (
@@ -686,6 +689,7 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
         ) : viewMode === 'list' && isGrouped && groupedTasks ? (
           <div className="space-y-6">
             {[
+              { id: 'pinned', label: 'Przypięte', items: groupedTasks.pinned, color: 'text-purple-400' },
               { id: 'overdue', label: 'Zaległe', items: groupedTasks.overdue, color: 'text-red-400' },
               { id: 'today', label: 'Dziś', items: groupedTasks.today, color: 'text-teal-400' },
               { id: 'tomorrow', label: 'Jutro', items: groupedTasks.tomorrow, color: 'text-yellow-400' },
@@ -704,6 +708,7 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
                         key={task.id}
                         task={task}
                         toggleTask={toggleTask}
+                        togglePin={togglePin}
                         startEditing={startEditing}
                         handleDelete={handleDelete}
                         editingTaskId={editingTaskId}
@@ -731,15 +736,16 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
             onDragEnd={handleDragEnd}
           >
             <SortableContext 
-              items={filteredTasks.map(t => t.id)} 
+              items={sortedTasks.map(t => t.id)} 
               strategy={verticalListSortingStrategy}
-              disabled={filterPriority !== 0} // Wyłącz sortowanie gdy aktywny filtr
+              disabled={filterPriority !== 0 || sortConfig !== null} // Wyłącz sortowanie gdy aktywny filtr
             >
-              {filteredTasks.map(task => (
+              {sortedTasks.map(task => (
                 <SortableTaskItem
                   key={task.id}
                   task={task}
                   toggleTask={toggleTask}
+                  togglePin={togglePin}
                   startEditing={startEditing}
                   handleDelete={handleDelete}
                   editingTaskId={editingTaskId}
@@ -763,6 +769,7 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
               <table className="w-full text-left text-sm">
                 <thead className="bg-white/5 text-xs uppercase text-gray-400 font-medium">
                   <tr>
+                    <th className="px-4 py-3 w-10"></th>
                     <th className="px-4 py-3 w-12 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('is_completed')}>
                       <div className="flex items-center gap-1">
                         Status
@@ -793,7 +800,15 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {paginatedTasks.map(task => (
-                    <tr key={task.id} className="hover:bg-white/5 transition group">
+                    <tr key={task.id} className={`hover:bg-white/5 transition group ${task.is_pinned ? 'bg-purple-500/5' : ''}`}>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => togglePin(task)}
+                          className={`transition-colors ${task.is_pinned ? 'text-purple-400' : 'text-gray-600 hover:text-gray-400'}`}
+                        >
+                          <Pin className={`w-4 h-4 ${task.is_pinned ? 'fill-current' : ''}`} />
+                        </button>
+                      </td>
                       <td className="px-4 py-3">
                         <button
                           onClick={() => toggleTask(task)}
@@ -923,8 +938,6 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
           </div>
         )}
       </div>
-        </div>
-      </div>
 
       {/* Delete Confirmation Modal */}
       {deletingTaskId !== null && (
@@ -946,6 +959,131 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
                 Usuń
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Task Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#1c1c1e] border border-white/10 rounded-xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in-95 flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-white/10 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-white">Nowe zadanie</h3>
+              <button onClick={() => setIsAddModalOpen(false)} className="text-gray-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleAddTask} className="p-4 space-y-4 overflow-y-auto">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tytuł</label>
+                <input
+                  type="text"
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  placeholder="Co masz do zrobienia?"
+                  className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-teal-500"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Opis</label>
+                <textarea
+                  value={newTaskDescription}
+                  onChange={(e) => setNewTaskDescription(e.target.value)}
+                  placeholder="Szczegóły zadania..."
+                  className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-teal-500 resize-none h-24"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Termin</label>
+                  <input
+                    type="datetime-local"
+                    value={newTaskDate}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNewTaskDate(val);
+                      if (val) {
+                        const d = new Date(val);
+                        const reminder = new Date(d);
+                        reminder.setDate(reminder.getDate() - 1);
+                        reminder.setHours(20, 0, 0, 0);
+                        setNewTaskReminder(toLocalISO(reminder));
+                      } else {
+                        setNewTaskReminder('');
+                      }
+                    }}
+                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-teal-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Priorytet</label>
+                  <select
+                    value={newTaskPriority}
+                    onChange={(e) => setNewTaskPriority(parseInt(e.target.value) as 1 | 2 | 3)}
+                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-teal-500"
+                  >
+                    <option value={1}>Niski</option>
+                    <option value={2}>Średni</option>
+                    <option value={3}>Wysoki</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tagi</label>
+                <div className="relative">
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {newTaskTags.split(',').filter(Boolean).map(tag => (
+                      <span key={tag} className={`text-xs px-2 py-1 rounded border flex items-center gap-1 ${getTagColor(tag.trim())}`}>
+                        {tag.trim()}
+                        <button type="button" onClick={() => removeTag(tag.trim())} className="hover:text-white"><X className="w-3 h-3"/></button>
+                      </span>
+                    ))}
+                  </div>
+                  <input
+                    type="text"
+                    value={tagInput}
+                    onChange={(e) => { setTagInput(e.target.value); setShowTagSuggestions(true); }}
+                    onKeyDown={handleTagInputKeyDown}
+                    onFocus={() => setShowTagSuggestions(true)}
+                    // onBlur={() => setTimeout(() => setShowTagSuggestions(false), 200)}
+                    placeholder="Wpisz tag i naciśnij Enter lub wybierz z listy..."
+                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-teal-500"
+                  />
+                  {showTagSuggestions && (tagInput || availableTags.length > 0) && (
+                    <div className="absolute z-10 w-full mt-1 bg-[#252528] border border-white/10 rounded-lg shadow-xl max-h-40 overflow-y-auto">
+                      {availableTags.filter(t => t.toLowerCase().includes(tagInput.toLowerCase()) && !newTaskTags.includes(t)).map(tag => (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => addTag(tag)}
+                          className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 hover:text-white transition"
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                      {availableTags.filter(t => t.toLowerCase().includes(tagInput.toLowerCase()) && !newTaskTags.includes(t)).length === 0 && tagInput && (
+                         <div className="px-3 py-2 text-xs text-gray-500 italic">Naciśnij Enter aby dodać "{tagInput}"</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={isAdding || !newTaskTitle.trim()}
+                  className="w-full bg-teal-600 hover:bg-teal-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg transition flex items-center justify-center gap-2"
+                >
+                  {isAdding ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Zapisz Zadanie'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -3,6 +3,7 @@ echo "🛑 Zatrzymuję aplikację..."
 
 # Zabij procesy
 pkill -f "python3 app.py"
+pkill -f "npm run dev"
 pkill -f "npm run preview"
 pkill -f vite
 sleep 2
@@ -12,9 +13,9 @@ cd /opt/myniu-lite/backend
 nohup python3 app.py > backend.log 2>&1 &
 BACKEND_PID=$!
 
-echo "🚀 Uruchamiam Frontend..."
+echo "🚀 Uruchamiam Frontend (DEV MODE)..."
 cd /opt/myniu-lite/frontend
-nohup npm run preview -- --host > frontend.log 2>&1 &
+nohup npm run dev -- --host --port 4173 > frontend.log 2>&1 &
 FRONTEND_PID=$!
 
 echo "✅ Aplikacja działa!"

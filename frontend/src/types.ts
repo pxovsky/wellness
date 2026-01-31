@@ -27,13 +27,13 @@ export interface Task {
   id: number;
   title: string;
   description?: string;
-  priority: 1 | 2 | 3; // 1: Low, 2: Medium, 3: High
+  priority: 1 | 2 | 3;
   due_date?: string;
   reminder_date?: string;
-  is_completed: number; // 1 = yes, 0 = no
-  position: number;
   tags?: string;
-  created_at: string;
+  is_completed: number;
+  created_at?: string;
+  is_pinned?: number;
 }
 
 export interface ApiResponse<T> {

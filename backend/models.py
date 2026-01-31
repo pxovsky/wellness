@@ -74,6 +74,7 @@ class TaskCreateRequest(BaseModel):
     due_date: Optional[str] = None
     reminder_date: Optional[str] = None
     tags: Optional[str] = ""
+    is_pinned: Optional[int] = Field(0, ge=0, le=1)
 
 class TaskUpdateRequest(BaseModel):
     title: Optional[str] = None
@@ -83,6 +84,7 @@ class TaskUpdateRequest(BaseModel):
     reminder_date: Optional[str] = None
     tags: Optional[str] = None
     is_completed: Optional[int] = Field(None, ge=0, le=1)
+    is_pinned: Optional[int] = Field(None, ge=0, le=1)
 
 class TaskResponse(BaseModel):
     id: int
@@ -93,6 +95,7 @@ class TaskResponse(BaseModel):
     reminder_date: Optional[str]
     tags: str
     is_completed: int
+    is_pinned: int
     created_at: str
 
 class ErrorResponse(BaseModel):

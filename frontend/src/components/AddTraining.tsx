@@ -61,7 +61,7 @@ export const AddTraining: React.FC<{ onSaved: () => void }> = ({ onSaved }) => {
   };
 
   return (
-    <div className="space-y-4 pb-20 xl:pb-0 px-4 xl:px-8 max-w-2xl mx-auto">
+    <div className="space-y-4 pb-20 xl:pb-0 max-w-2xl">
       <PageHeader title="Dodaj Trening" />
 
       {error && (

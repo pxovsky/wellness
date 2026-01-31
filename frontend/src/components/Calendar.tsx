@@ -175,7 +175,7 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, tasks, onLogsUpda
   for (let i = 1; i <= remainingDays; i++) calendarDays.push({ day: i, isCurrentMonth: false });
 
   return (
-    <div className="space-y-6 pb-20 animate-in fade-in duration-500 max-w-4xl mx-auto">
+    <div className="space-y-6 pb-20 animate-in fade-in duration-500 max-w-4xl">
       <PageHeader title="Kalendarz" subtitle="Przegląd Twoich celów" />
 
       {/* Szczegóły Wybranego Dnia (teraz na górze) */}

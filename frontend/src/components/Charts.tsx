@@ -65,7 +65,7 @@ export const Charts: React.FC<ChartsProps> = ({ trainings, dailyLogs = [] }) => 
   };
 
   return (
-    <div className="space-y-8 pb-20 animate-in fade-in slide-in-from-right-4 duration-300 max-w-6xl mx-auto">
+    <div className="space-y-8 pb-20 animate-in fade-in slide-in-from-right-4 duration-300 max-w-6xl">
       <PageHeader title="Wykresy i Trendy" subtitle="Ostatnie 10 treningów i 7 dni" />
 
       {/* --- SEKCJA 1: TRENINGI --- */}

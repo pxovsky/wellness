@@ -140,7 +140,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ trainings, dailyLogs, onRe
   };
 
   return (
-    <div className="space-y-4 pb-10 animate-in fade-in duration-500 max-w-6xl mx-auto">
+    <div className="space-y-4 pb-10 animate-in fade-in duration-500 max-w-6xl">
       <PageHeader title="Dashboard" />
 
       {/* AI Coach */}
