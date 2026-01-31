@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import axios from 'axios';
-import { ApiResponse, VitaminLogResponse } from '../types';
 
 export function useVitamins() {
   const [vitamins, setVitamins] = useState<0 | 1>(0);
@@ -11,13 +10,15 @@ export function useVitamins() {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.post<ApiResponse<VitaminLogResponse>>(
-        '/api/daily/vitamins',
-        { vitamins: value }
-      );
+      const today = new Date().toISOString().split('T')[0];
+      // Poprawiony endpoint i payload zgodny z backendem
+      const response = await axios.post('/api/daily/vitamins', { 
+        date: today,
+        taken: value 
+      });
 
-      if (response.data.status === 'success' && response.data.data) {
-        setVitamins(response.data.data.vitamins);
+      if (response.data.status === 'success') {
+        setVitamins(value);
         return response.data;
       } else {
         throw new Error(response.data.message || 'Failed to log vitamins');

@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import axios from 'axios';
-import { ApiResponse, ChoresLogResponse } from '../types';
 
 export function useHouseholdChores() {
   const [chores, setChores] = useState<number>(0);
@@ -18,13 +17,15 @@ export function useHouseholdChores() {
     }
 
     try {
-      const response = await axios.post<ApiResponse<ChoresLogResponse>>(
-        '/api/daily/household-chores',
-        { household_chores: value }
-      );
+      const today = new Date().toISOString().split('T')[0];
+      // Używamy pełnego URL lub instancji API, tutaj axios bezpośrednio z poprawnym endpointem
+      const response = await axios.post('/api/daily/chores', { 
+        date: today,
+        count: value 
+      });
 
-      if (response.data.status === 'success' && response.data.data) {
-        setChores(response.data.data.household_chores);
+      if (response.data.status === 'success') {
+        setChores(value);
         return response.data;
       } else {
         throw new Error(response.data.message || 'Failed to log chores');

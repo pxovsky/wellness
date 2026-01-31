@@ -7,7 +7,15 @@ import storage
 app = Flask(__name__)
 
 # CORS - allow frontend on localhost:3000 (or any port during dev)
-CORS(app, resources={r"/*": {"origins": "*"}})
+
+origins = [
+    "http://localhost:5173",      # Twój laptop (Vite)
+    "http://127.0.0.1:5173",      # Alternatywny localhost
+    "http://192.168.0.153:4173",  # Twój serwer (PROD/DEV)
+    "http://192.168.0.153:5173"   # Twój serwer (Vite default)
+]
+
+CORS(app, resources={r"/*": {"origins": origins}})
 
 # Initialize database on startup
 @app.before_request
@@ -293,7 +301,8 @@ def add_task():
             priority=data.get('priority', 1),
             due_date=data.get('due_date'),
             reminder_date=data.get('reminder_date'),
-            tags=data.get('tags', '')
+            tags=data.get('tags', ''),
+            is_pinned=data.get('is_pinned', 0)
         )
         return jsonify({"status": "success", "id": task_id}), 201
     except Exception as e:
@@ -304,8 +313,12 @@ def update_task(task_id):
     """Update task"""
     try:
         data = request.json
-        storage.update_task(task_id, **data)
-        return jsonify({"status": "success"}), 200
+        if not data:
+            return jsonify({"error": "Missing request body"}), 400
+        if storage.update_task(task_id, **data):
+            return jsonify({"status": "success"}), 200
+        else:
+            return jsonify({"error": "Task not found"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

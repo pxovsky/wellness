@@ -1,8 +1,8 @@
-﻿import axios from 'axios';
-import { Training, Task } from '../types';
+﻿﻿import axios from 'axios';
+import { Training, DailyLog, Task } from '../types';
 
 const API = axios.create({
-  baseURL: 'http://192.168.0.153:5000/api',
+  baseURL: 'http://192.168.0.198:5000/api',
   timeout: 10000
 });
 
@@ -32,8 +32,9 @@ export const dailyAPI = {
 
 export const tasksAPI = {
   getAll: () => API.get('/tasks').then(r => r.data),
-  add: (task: Partial<Task>) => API.post('/tasks', task).then(r => r.data),
-  update: (id: number, updates: Partial<Task>) => API.put(`/tasks/${id}`, updates).then(r => r.data),
+  add: (data: Partial<Task>) => API.post('/tasks', data).then(r => r.data),
+  update: (id: number, data: Partial<Task>) => API.put(`/tasks/${id}`, data).then(r => r.data),
   delete: (id: number) => API.delete(`/tasks/${id}`).then(r => r.data),
   reorder: (taskIds: number[]) => API.post('/tasks/reorder', { task_ids: taskIds }).then(r => r.data)
 };
+

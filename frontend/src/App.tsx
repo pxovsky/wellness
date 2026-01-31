@@ -7,6 +7,7 @@ import { History } from './components/History';
 import { Charts } from './components/Charts';
 import { Calendar } from './components/Calendar';
 import { Tasks } from './components/Tasks';
+import { useNotifications } from './components/useNotifications';
 import { Training, DailyLog, Task } from './types';
 import { getTrainings, getDailyLogs, getTasks } from './utils/storage';
 import { Home, Plus, Calendar as CalendarIcon, History as HistoryIcon, BarChart3, AlertCircle, Loader2, CheckSquare } from 'lucide-react';
@@ -22,6 +23,9 @@ const App: React.FC = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1280);
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
+
+  // Uruchom system powiadomień
+  useNotifications(tasks);
 
   const loadData = async () => {
     try {

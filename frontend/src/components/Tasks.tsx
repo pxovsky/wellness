@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Task } from '../types';
 import { getTasks, addTask, updateTask, deleteTask, reorderTasks } from '../utils/storage';
 import { PageHeader } from './PageHeader';
-import { Plus, Trash2, CheckCircle, Circle, Calendar, Flag, Loader2, Bell, Edit2, X, Check, GripVertical, Table, List, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Search, CalendarClock, Tag, Pin } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Circle, Calendar, Flag, Loader2, Edit2, X, GripVertical, Table, List, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Search, CalendarClock, Tag, Pin, Bell } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-// --- Sortable Item Component ---
+// --- Helpers ---
 
 const getTagColor = (tag: string) => {
   const colors = [
@@ -39,33 +39,83 @@ const getTagColor = (tag: string) => {
   return colors[index];
 };
 
+const getPriorityColor = (p: number) => {
+  if (p === 3) return 'text-red-500';
+  if (p === 2) return 'text-yellow-500';
+  return 'text-teal-500';
+};
+
+const getPriorityLabel = (p: number) => {
+  if (p === 3) return 'Wysoki';
+  if (p === 2) return 'Średni';
+  return 'Niski';
+};
+
+const toLocalISO = (date: Date) => {
+  const tzOffset = date.getTimezoneOffset() * 60000;
+  return (new Date(date.getTime() - tzOffset)).toISOString().slice(0, 16);
+};
+
+const formatForInput = (isoString?: string) => {
+  if (!isoString) return '';
+  return isoString.slice(0, 16);
+};
+
+// --- Sortable Item Component ---
+
 interface TaskItemProps {
   task: Task;
-  toggleTask: (task: Task) => void;
-  togglePin: (task: Task) => void;
-  startEditing: (task: Task) => void;
-  handleDelete: (id: number) => void;
-  editingTaskId: number | null;
-  editingTitle: string;
-  setEditingTitle: (title: string) => void;
-  editingDescription: string;
-  setEditingDescription: (desc: string) => void;
-  editingTags: string;
-  setEditingTags: (tags: string) => void;
-  cancelEditing: () => void;
-  saveDescription: (id: number) => void;
-  getPriorityColor: (p: number) => string;
-  getPriorityLabel: (p: number) => string;
+  onUpdate: (id: number, data: Partial<Task>) => void;
+  onDelete: (id: number) => void;
   dragHandleProps?: any;
   style?: React.CSSProperties;
   setNodeRef?: (node: HTMLElement | null) => void;
 }
 
 const TaskItem: React.FC<TaskItemProps> = ({
-  task, toggleTask, togglePin, startEditing, handleDelete, editingTaskId, editingTitle, setEditingTitle,
-  editingDescription, setEditingDescription, editingTags, setEditingTags, cancelEditing, saveDescription, 
-  getPriorityColor, getPriorityLabel, dragHandleProps, style, setNodeRef
+  task, onUpdate, onDelete, dragHandleProps, style, setNodeRef
 }) => {
+  const [editingField, setEditingField] = useState<'title' | 'description' | 'tags' | null>(null);
+  const [tempValue, setTempValue] = useState('');
+
+  const startEditing = (field: 'title' | 'description' | 'tags', value: string) => {
+    setEditingField(field);
+    setTempValue(value);
+  };
+
+  const saveEdit = () => {
+    if (!editingField) return;
+    
+    const updates: Partial<Task> = {};
+    if (editingField === 'title' && tempValue.trim() !== task.title) updates.title = tempValue;
+    if (editingField === 'description' && tempValue.trim() !== (task.description || '')) updates.description = tempValue;
+    if (editingField === 'tags' && tempValue.trim() !== (task.tags || '')) updates.tags = tempValue;
+
+    if (Object.keys(updates).length > 0) {
+      onUpdate(task.id, updates);
+    }
+    setEditingField(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingField(null);
+    setTempValue('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && editingField !== 'description') {
+      saveEdit();
+    } else if (e.key === 'Escape') {
+      cancelEdit();
+    }
+  };
+
+  const togglePriority = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextPriority = (task.priority % 3) + 1;
+    onUpdate(task.id, { priority: nextPriority as 1 | 2 | 3 });
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -86,115 +136,146 @@ const TaskItem: React.FC<TaskItemProps> = ({
       )}
 
       <button
-        onClick={() => toggleTask(task)}
+        onClick={() => onUpdate(task.id, { is_completed: task.is_completed ? 0 : 1 })}
         className={`flex-shrink-0 mt-0.5 transition-colors ${task.is_completed ? 'text-green-500' : 'text-gray-500 hover:text-white'}`}
       >
         {task.is_completed ? <CheckCircle className="w-6 h-6" /> : <Circle className="w-6 h-6" />}
       </button>
 
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 space-y-1">
+        {/* Title */}
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono text-gray-600">#{task.id}</span>
-          {editingTaskId === task.id ? (
+          {editingField === 'title' ? (
             <input
-              value={editingTitle}
-              onChange={(e) => setEditingTitle(e.target.value)}
+              value={tempValue}
+              onChange={(e) => setTempValue(e.target.value)}
+              onBlur={saveEdit}
+              onKeyDown={handleKeyDown}
               className="bg-black/40 border border-white/10 rounded px-2 py-0.5 text-sm text-white focus:outline-none focus:border-teal-500 flex-1 min-w-0"
               autoFocus
-              placeholder="Tytuł zadania"
             />
           ) : (
-            <p className={`font-medium truncate ${task.is_completed ? 'line-through text-gray-500' : 'text-white'}`}>
+            <p 
+              onClick={() => startEditing('title', task.title)}
+              className={`font-medium truncate cursor-text hover:text-teal-400 transition-colors ${task.is_completed ? 'line-through text-gray-500' : 'text-white'}`}
+              title="Kliknij, aby edytować tytuł"
+            >
               {task.title}
             </p>
           )}
         </div>
         
-        {editingTaskId === task.id ? (
-          <div className="mt-2 space-y-2">
-            <textarea
-              value={editingDescription}
-              onChange={(e) => setEditingDescription(e.target.value)}
-              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500 resize-none h-20"
-              placeholder="Wpisz opis..."
-            />
-            <input
-              value={editingTags}
-              onChange={(e) => setEditingTags(e.target.value)}
-              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500"
-              placeholder="Tagi (oddzielone przecinkami)"
-            />
-            <div className="flex gap-2 justify-end">
-              <button onClick={cancelEditing} className="p-1 text-gray-400 hover:text-white" title="Anuluj">
-                <X className="w-4 h-4" />
-              </button>
-              <button onClick={() => saveDescription(task.id)} className="p-1 text-green-500 hover:text-green-400" title="Zapisz">
-                <Check className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+        {/* Description */}
+        {editingField === 'description' ? (
+          <textarea
+            value={tempValue}
+            onChange={(e) => setTempValue(e.target.value)}
+            onBlur={saveEdit}
+            onKeyDown={(e) => { if(e.key === 'Escape') cancelEdit(); }}
+            className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500 resize-none h-20 mt-1"
+            autoFocus
+            placeholder="Wpisz opis..."
+          />
         ) : (
-          task.description && (
-            <p className="text-sm text-gray-400 mt-1 line-clamp-2">{task.description}</p>
-          )
+          <p 
+            onClick={() => startEditing('description', task.description || '')}
+            className={`text-sm cursor-text hover:text-gray-300 transition-colors mt-1 line-clamp-2 ${task.description ? 'text-gray-400' : 'text-gray-600 italic'}`}
+            title="Kliknij, aby edytować opis"
+          >
+            {task.description || 'Dodaj opis...'}
+          </p>
         )}
 
-        {task.tags && !editingTaskId && (
-          <div className="flex flex-wrap gap-1 mt-2">
-            {task.tags.split(',').filter(Boolean).map((tag, i) => (
-              <button
-                key={i}
-                onClick={(e) => { e.stopPropagation(); startEditing(task); }}
-                className={`text-[10px] px-1.5 py-0.5 rounded border flex items-center gap-1 hover:opacity-80 transition-opacity cursor-pointer ${getTagColor(tag.trim())}`}
-                title="Kliknij, aby edytować"
-              >
-                <Tag className="w-2.5 h-2.5" /> {tag.trim()}
-              </button>
-            ))}
+        {/* Tags */}
+        {editingField === 'tags' ? (
+           <input
+             value={tempValue}
+             onChange={(e) => setTempValue(e.target.value)}
+             onBlur={saveEdit}
+             onKeyDown={handleKeyDown}
+             className="w-full bg-black/40 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-teal-500 mt-1"
+             autoFocus
+             placeholder="Tagi (po przecinku)"
+           />
+        ) : (
+          <div 
+            className="flex flex-wrap gap-1 min-h-[20px] items-center cursor-pointer group/tags mt-1"
+            onClick={() => startEditing('tags', task.tags || '')}
+            title="Kliknij, aby edytować tagi"
+          >
+            {task.tags ? (
+              task.tags.split(',').filter(Boolean).map((tag, i) => (
+                <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded border ${getTagColor(tag.trim())}`}>
+                  {tag.trim()}
+                </span>
+              ))
+            ) : (
+              <span className="text-[10px] text-gray-600 opacity-0 group-hover/tags:opacity-100 transition-opacity flex items-center gap-1">
+                <Tag className="w-3 h-3" /> Dodaj tagi
+              </span>
+            )}
           </div>
         )}
 
+        {/* Meta: Date, Reminder, Priority */}
         <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-500">
-          {task.due_date && (
-            <span className={`flex items-center gap-1 ${!task.is_completed && new Date(task.due_date) < new Date() ? 'text-red-400' : ''}`}>
-              <Calendar className="w-3 h-3" />
-              {new Date(task.due_date).toLocaleString('pl-PL', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          {/* Date Picker */}
+          <div className="flex items-center gap-1 hover:text-white transition-colors cursor-pointer relative group/date">
+            <Calendar className="w-3 h-3" />
+            <input
+              type="datetime-local"
+              value={formatForInput(task.due_date)}
+              onChange={(e) => onUpdate(task.id, { due_date: e.target.value })}
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              title="Zmień datę"
+            />
+            <span className={`${!task.is_completed && task.due_date && new Date(task.due_date) < new Date() ? 'text-red-400' : ''}`}>
+              {task.due_date ? new Date(task.due_date).toLocaleString('pl-PL', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Ustaw termin'}
             </span>
-          )}
-          {task.reminder_date && (
-            <span className="flex items-center gap-1 text-yellow-500/80">
-              <Bell className="w-3 h-3" />
-              {new Date(task.reminder_date).toLocaleString('pl-PL', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </div>
+
+          {/* Reminder Picker */}
+          <div className={`flex items-center gap-1 hover:text-white transition-colors cursor-pointer relative group/reminder ${task.reminder_date ? 'text-teal-400' : 'text-gray-500'}`}>
+            <Bell className="w-3 h-3" />
+            <input
+              type="datetime-local"
+              value={formatForInput(task.reminder_date)}
+              onChange={(e) => onUpdate(task.id, { reminder_date: e.target.value })}
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              title="Ustaw przypomnienie"
+            />
+            <span>
+              {task.reminder_date ? new Date(task.reminder_date).toLocaleString('pl-PL', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '+Alert'}
             </span>
-          )}
-          <span className={`flex items-center gap-1 ${getPriorityColor(task.priority)}`}>
+          </div>
+
+          {/* Priority Toggle */}
+          <button 
+            onClick={togglePriority}
+            className={`flex items-center gap-1 hover:opacity-80 transition-opacity ${getPriorityColor(task.priority)}`}
+            title="Kliknij aby zmienić priorytet"
+          >
             <Flag className="w-3 h-3" />
             {getPriorityLabel(task.priority)}
-          </span>
+          </button>
         </div>
       </div>
 
-      <div className="flex opacity-0 group-hover:opacity-100 transition-all">
+      <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all">
         <button
-          onClick={() => togglePin(task)}
-          className={`p-2 hover:text-white ${task.is_pinned ? 'text-purple-400' : 'text-gray-500'}`}
+          onClick={() => onUpdate(task.id, { is_pinned: task.is_pinned ? 0 : 1 })}
+          className={`p-1.5 hover:text-white rounded-md hover:bg-white/10 ${task.is_pinned ? 'text-purple-400' : 'text-gray-500'}`}
           title={task.is_pinned ? "Odepnij" : "Przypnij"}
         >
-          <Pin className={`w-5 h-5 ${task.is_pinned ? 'fill-current' : ''}`} />
+          <Pin className={`w-4 h-4 ${task.is_pinned ? 'fill-current' : ''}`} />
         </button>
         <button
-          onClick={() => startEditing(task)}
-            className="p-2 text-gray-500 hover:text-teal-500"
-          title="Edytuj opis"
-        >
-          <Edit2 className="w-5 h-5" />
-        </button>
-        <button
-          onClick={() => handleDelete(task.id)}
-          className="p-2 text-gray-500 hover:text-red-500"
+          onClick={() => onDelete(task.id)}
+          className="p-1.5 text-gray-500 hover:text-red-500 rounded-md hover:bg-white/10"
           title="Usuń"
         >
-          <Trash2 className="w-5 h-5" />
+          <Trash2 className="w-4 h-4" />
         </button>
       </div>
     </div>
@@ -222,11 +303,6 @@ const SortableTaskItem: React.FC<TaskItemProps> = (props) => {
 };
 
 export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange }) => {
-  const toLocalISO = (date: Date) => {
-    const tzOffset = date.getTimezoneOffset() * 60000;
-    return (new Date(date.getTime() - tzOffset)).toISOString().slice(0, 16);
-  };
-
   const getInitialDefaults = () => {
     const now = new Date();
     now.setMinutes(0, 0, 0);
@@ -251,10 +327,13 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
   const [newTaskReminder, setNewTaskReminder] = useState(() => getInitialDefaults().defaultReminder);
   const [newTaskTags, setNewTaskTags] = useState('');
   const [isAdding, setIsAdding] = useState(false);
+  
+  // State for Table View (Backlog) - kept for compatibility
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [editingDescription, setEditingDescription] = useState('');
   const [editingTags, setEditingTags] = useState('');
+
   const [filterPriority, setFilterPriority] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'table'>('list');
@@ -294,6 +373,18 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
     setCurrentPage(1);
   }, [filterPriority, viewMode, searchQuery]);
 
+  const handleTaskUpdate = async (taskId: number, updates: Partial<Task>) => {
+    // Optimistic update
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t));
+    try {
+      await updateTask(taskId, updates);
+      onTasksChange?.();
+    } catch (e) {
+      console.error('Failed to update task', e);
+      loadTasks(); // Revert on error
+    }
+  };
+
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
@@ -325,36 +416,10 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
     }
   };
 
-  const toggleTask = async (task: Task) => {
-    // Optimistic update
-    const updatedTasks = tasks.map(t => 
-      t.id === task.id ? { ...t, is_completed: t.is_completed ? 0 : 1 } : t
-    );
-    setTasks(updatedTasks);
-
-    try {
-      await updateTask(task.id, { is_completed: task.is_completed ? 0 : 1 });
-      loadTasks(); // Reload to sort correctly
-      onTasksChange?.();
-    } catch (e) {
-      console.error('Failed to update task', e);
-      loadTasks(); // Revert on error
-    }
-  };
-
-  const togglePin = async (task: Task) => {
-    const newPinnedStatus = task.is_pinned ? 0 : 1;
-    // Optimistic update
-    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, is_pinned: newPinnedStatus } : t));
-    try {
-      await updateTask(task.id, { is_pinned: newPinnedStatus });
-      onTasksChange?.();
-    } catch (e) {
-      console.error('Failed to toggle pin', e);
-      loadTasks();
-    }
-  };
-
+  // Legacy handlers for Table View
+  const toggleTask = async (task: Task) => handleTaskUpdate(task.id, { is_completed: task.is_completed ? 0 : 1 });
+  const togglePin = async (task: Task) => handleTaskUpdate(task.id, { is_pinned: task.is_pinned ? 0 : 1 });
+  
   const handleDelete = async (id: number) => {
     setDeletingTaskId(id);
   };
@@ -372,6 +437,7 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
     }
   };
 
+  // Legacy editing for Table View
   const startEditing = (task: Task) => {
     setEditingTaskId(task.id);
     setEditingTitle(task.title);
@@ -397,39 +463,8 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
     }
   };
 
-  const handleDateChange = async (taskId: number, newDate: string) => {
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, due_date: newDate } : t));
-    try {
-      await updateTask(taskId, { due_date: newDate });
-      onTasksChange?.();
-    } catch (e) {
-      console.error('Failed to update date', e);
-      loadTasks();
-    }
-  };
-
-  const handlePriorityChange = async (taskId: number, newPriority: 1 | 2 | 3) => {
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, priority: newPriority } : t));
-    try {
-      await updateTask(taskId, { priority: newPriority });
-      onTasksChange?.();
-    } catch (e) {
-      console.error('Failed to update priority', e);
-      loadTasks();
-    }
-  };
-
-  const getPriorityColor = (p: number) => {
-    if (p === 3) return 'text-red-500';
-    if (p === 2) return 'text-yellow-500';
-    return 'text-teal-500';
-  };
-
-  const getPriorityLabel = (p: number) => {
-    if (p === 3) return 'Wysoki';
-    if (p === 2) return 'Średni';
-    return 'Niski';
-  };
+  const handleDateChange = async (taskId: number, newDate: string) => handleTaskUpdate(taskId, { due_date: newDate });
+  const handlePriorityChange = async (taskId: number, newPriority: 1 | 2 | 3) => handleTaskUpdate(taskId, { priority: newPriority });
 
   const allTags = React.useMemo(() => {
     const tagsMap = new Map<string, number>();
@@ -493,7 +528,6 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
     let sortableItems = [...filteredTasks];
     if (sortConfig !== null) {
       sortableItems.sort((a, b) => {
-        // Always prioritize pinned items
         const pinA = a.is_pinned || 0;
         const pinB = b.is_pinned || 0;
         if (pinA !== pinB) return pinB - pinA;
@@ -510,7 +544,6 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
         return 0;
       });
     } else {
-      // Default sort: Pinned first
       sortableItems.sort((a, b) => (b.is_pinned || 0) - (a.is_pinned || 0));
     }
     return sortableItems;
@@ -572,7 +605,6 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
         const newIndex = items.findIndex((t) => t.id === over.id);
         const newItems = arrayMove(items, oldIndex, newIndex);
         
-        // Wyślij nową kolejność do backendu
         const taskIds = newItems.map(t => t.id);
         reorderTasks(taskIds).catch(err => console.error("Failed to reorder", err));
         
@@ -707,21 +739,8 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
                       <TaskItem
                         key={task.id}
                         task={task}
-                        toggleTask={toggleTask}
-                        togglePin={togglePin}
-                        startEditing={startEditing}
-                        handleDelete={handleDelete}
-                        editingTaskId={editingTaskId}
-                        editingTitle={editingTitle}
-                        setEditingTitle={setEditingTitle}
-                        editingDescription={editingDescription}
-                        setEditingDescription={setEditingDescription}
-                        editingTags={editingTags}
-                        setEditingTags={setEditingTags}
-                        cancelEditing={cancelEditing}
-                        saveDescription={saveDescription}
-                        getPriorityColor={getPriorityColor}
-                        getPriorityLabel={getPriorityLabel}
+                        onUpdate={handleTaskUpdate}
+                        onDelete={handleDelete}
                       />
                     ))}
                   </div>
@@ -738,27 +757,14 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
             <SortableContext 
               items={sortedTasks.map(t => t.id)} 
               strategy={verticalListSortingStrategy}
-              disabled={filterPriority !== 0 || sortConfig !== null} // Wyłącz sortowanie gdy aktywny filtr
+              disabled={filterPriority !== 0 || sortConfig !== null}
             >
               {sortedTasks.map(task => (
                 <SortableTaskItem
                   key={task.id}
                   task={task}
-                  toggleTask={toggleTask}
-                  togglePin={togglePin}
-                  startEditing={startEditing}
-                  handleDelete={handleDelete}
-                  editingTaskId={editingTaskId}
-                  editingTitle={editingTitle}
-                  setEditingTitle={setEditingTitle}
-                  editingDescription={editingDescription}
-                  setEditingDescription={setEditingDescription}
-                  editingTags={editingTags}
-                  setEditingTags={setEditingTags}
-                  cancelEditing={cancelEditing}
-                  saveDescription={saveDescription}
-                  getPriorityColor={getPriorityColor}
-                  getPriorityLabel={getPriorityLabel}
+                  onUpdate={handleTaskUpdate}
+                  onDelete={handleDelete}
                 />
               ))}
             </SortableContext>
@@ -885,14 +891,27 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
                         </div>
                       </td>
                       <td className="px-4 py-3 text-gray-400 text-xs">
-                        <input
-                          type="datetime-local"
-                          value={task.due_date || ''}
-                          onChange={(e) => handleDateChange(task.id, e.target.value)}
-                          className={`bg-transparent border border-transparent hover:border-white/10 rounded px-2 py-1 text-xs focus:bg-[#2c2c2e] focus:border-teal-500 focus:outline-none transition-colors w-full ${
-                            !task.is_completed && task.due_date && new Date(task.due_date) < new Date() ? 'text-red-400' : 'text-gray-400'
-                          }`}
-                        />
+                        <div className="flex flex-col gap-1">
+                          <input
+                            type="datetime-local"
+                            value={formatForInput(task.due_date)}
+                            onChange={(e) => handleDateChange(task.id, e.target.value)}
+                            className={`bg-transparent border border-transparent hover:border-white/10 rounded px-1 py-0.5 text-xs focus:bg-[#2c2c2e] focus:border-teal-500 focus:outline-none transition-colors w-full ${
+                              !task.is_completed && task.due_date && new Date(task.due_date) < new Date() ? 'text-red-400' : 'text-gray-400'
+                            }`}
+                            title="Termin wykonania"
+                          />
+                          <div className="flex items-center gap-1">
+                            <Bell className={`w-3 h-3 ${task.reminder_date ? 'text-teal-500' : 'text-gray-600'}`} />
+                            <input
+                              type="datetime-local"
+                              value={formatForInput(task.reminder_date)}
+                              onChange={(e) => handleTaskUpdate(task.id, { reminder_date: e.target.value })}
+                              className={`bg-transparent border border-transparent hover:border-white/10 rounded px-1 py-0.5 text-[10px] focus:bg-[#2c2c2e] focus:border-teal-500 focus:outline-none transition-colors w-full ${task.reminder_date ? 'text-teal-400' : 'text-gray-600'}`}
+                              title="Przypomnienie"
+                            />
+                          </div>
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-right">
                         {editingTaskId !== task.id && (
@@ -1020,6 +1039,16 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
                   />
                 </div>
                 <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Przypomnienie</label>
+                  <input
+                    type="datetime-local"
+                    value={newTaskReminder}
+                    onChange={(e) => setNewTaskReminder(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-teal-500"
+                  />
+                </div>
+              </div>
+              <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Priorytet</label>
                   <select
                     value={newTaskPriority}
@@ -1030,7 +1059,6 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
                     <option value={2}>Średni</option>
                     <option value={3}>Wysoki</option>
                   </select>
-                </div>
               </div>
 
               <div>
@@ -1050,7 +1078,6 @@ export const Tasks: React.FC<{ onTasksChange?: () => void }> = ({ onTasksChange 
                     onChange={(e) => { setTagInput(e.target.value); setShowTagSuggestions(true); }}
                     onKeyDown={handleTagInputKeyDown}
                     onFocus={() => setShowTagSuggestions(true)}
-                    // onBlur={() => setTimeout(() => setShowTagSuggestions(false), 200)}
                     placeholder="Wpisz tag i naciśnij Enter lub wybierz z listy..."
                     className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-teal-500"
                   />

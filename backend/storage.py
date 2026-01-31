@@ -44,6 +44,7 @@ class Task:
     created_at: str = ""
     position: int = 0
     tags: str = ""
+    is_pinned: int = 0
 
 
 
@@ -99,6 +100,7 @@ def init_db():
                 due_date TEXT,
                 reminder_date TEXT,
                 is_completed INTEGER DEFAULT 0,
+                is_pinned INTEGER DEFAULT 0,
                 position INTEGER DEFAULT 0,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
@@ -142,7 +144,11 @@ def init_db():
         if "tags" not in existing_task_cols:
             print("🛠️ Migracja: Dodaję kolumnę 'tags' do tasks...")
             cur.execute("ALTER TABLE tasks ADD COLUMN tags TEXT DEFAULT ''")
-
+            
+        if "is_pinned" not in existing_task_cols:
+            print("🛠️ Migracja: Dodaję kolumnę 'is_pinned' do tasks...")
+            cur.execute("ALTER TABLE tasks ADD COLUMN is_pinned INTEGER DEFAULT 0")
+            
         con.commit()
 
 
@@ -367,7 +373,7 @@ def get_daily_logs(start_date: str, end_date: str) -> List[dict]:
 
 # ========== TASKS (TO-DO) ==========
 
-def add_task(title: str, priority: int, due_date: Optional[str] = None, description: str = "", reminder_date: Optional[str] = None, tags: str = "") -> int:
+def add_task(title: str, priority: int, due_date: Optional[str] = None, description: str = "", reminder_date: Optional[str] = None, tags: str = "", is_pinned: int = 0) -> int:
     """Add new task"""
     with connect() as con:
         cur = con.cursor()
@@ -377,9 +383,9 @@ def add_task(title: str, priority: int, due_date: Optional[str] = None, descript
         new_pos = max_pos + 1
 
         cur.execute("""
-            INSERT INTO tasks (title, priority, due_date, description, reminder_date, position, tags)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (title, priority, due_date, description, reminder_date, new_pos, tags))
+            INSERT INTO tasks (title, priority, due_date, description, reminder_date, position, tags, is_pinned)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (title, priority, due_date, description, reminder_date, new_pos, tags, is_pinned))
         con.commit()
         return cur.lastrowid
 
@@ -391,13 +397,14 @@ def get_tasks() -> List[dict]:
         cur.execute("""
             SELECT * FROM tasks 
             ORDER BY is_completed ASC, 
+                     is_pinned DESC,
                      position ASC
         """)
         return [dict(row) for row in cur.fetchall()]
 
 def update_task(task_id: int, **kwargs) -> bool:
     """Update task fields"""
-    valid_keys = {'title', 'priority', 'due_date', 'is_completed', 'description', 'reminder_date', 'tags'}
+    valid_keys = {'title', 'priority', 'due_date', 'is_completed', 'description', 'reminder_date', 'tags', 'is_pinned'}
     updates = {k: v for k, v in kwargs.items() if k in valid_keys}
     
     if not updates:
