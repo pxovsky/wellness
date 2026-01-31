@@ -158,14 +158,14 @@ export const GoalModal: React.FC<GoalModalProps> = ({ goal, todayLog, onClose, o
                 max={config.goal * 1.5}
                 value={numValue}
                 onChange={(e) => setNumValue(parseInt(e.target.value))}
-                className="w-full accent-blue-600 cursor-pointer"
+                className="w-full accent-teal-600 cursor-pointer"
               />
 
               <div className="text-center">
                 <p className="text-gray-400 text-xs mb-1">Cel: {config.goal} {config.unit}</p>
                 <div className="w-full bg-[#2c2c2e] rounded-full h-2 overflow-hidden">
                   <div
-                    className="bg-gradient-to-r from-blue-500 to-green-500 h-full transition-all"
+                    className="bg-gradient-to-r from-teal-500 to-emerald-500 h-full transition-all"
                     style={{ width: `${progress}%` }}
                   />
                 </div>

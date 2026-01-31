@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Logo } from './components/Logo';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { AddTraining } from './components/AddTraining';
@@ -6,13 +7,15 @@ import { History } from './components/History';
 import { Charts } from './components/Charts';
 import { Calendar } from './components/Calendar';
 import { Tasks } from './components/Tasks';
-import { View, Training, DailyLog, Task } from './types';
+import { Training, DailyLog, Task } from './types';
 import { getTrainings, getDailyLogs, getTasks } from './utils/storage';
 import { Home, Plus, Calendar as CalendarIcon, History as HistoryIcon, BarChart3, AlertCircle, Loader2, CheckSquare } from 'lucide-react';
+import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<View>('Dashboard');
+  const location = useLocation();
+  const navigate = useNavigate();
   const [trainings, setTrainings] = useState<Training[]>([]);
   const [dailyLogs, setDailyLogs] = useState<DailyLog[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -52,16 +55,15 @@ const App: React.FC = () => {
 
   const uncompletedTasksCount = tasks.filter(t => t.is_completed === 0).length;
 
-  const renderView = () => {
-    if (isLoading && currentView === 'Dashboard') {
+  if (isLoading) {
       return (
         <div className="flex justify-center items-center p-10">
-          <Loader2 className="animate-spin w-10 h-10 text-blue-500" />
+          <Loader2 className="animate-spin w-10 h-10 text-teal-500" />
         </div>
       );
-    }
+  }
 
-    if (apiError && currentView === 'Dashboard') {
+  if (apiError) {
       return (
         <div className="p-4 bg-red-900/20 border border-red-500 rounded text-red-200 flex items-start gap-3">
           <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
@@ -71,82 +73,75 @@ const App: React.FC = () => {
           </div>
         </div>
       );
-    }
+  }
 
-    switch (currentView) {
-      case 'Dashboard':
-        return <Dashboard trainings={trainings} dailyLogs={dailyLogs} onRefresh={loadData} />;
-      case 'AddTraining':
-        return (
-          <AddTraining
-            onSaved={() => {
-              loadData();
-              setCurrentView('Dashboard');
-            }}
-          />
-        );
-      case 'History':
-        return <History trainings={trainings} />;
-      case 'Charts':
-        return <Charts trainings={trainings} dailyLogs={dailyLogs} />;
-      case 'Calendar':
-        return <Calendar dailyLogs={dailyLogs} onLogsUpdated={loadData} />;
-      case 'Tasks':
-        return <Tasks onTasksChange={loadData} />;
-      default:
-        return <Dashboard trainings={trainings} dailyLogs={dailyLogs} onRefresh={loadData} />;
-    }
-  };
+  const appRoutes = (
+    <Routes>
+      <Route path="/" element={<Dashboard trainings={trainings} dailyLogs={dailyLogs} onRefresh={loadData} />} />
+      <Route path="/add-training" element={
+        <AddTraining
+          onSaved={() => {
+            loadData();
+            navigate('/');
+          }}
+        />
+      } />
+      <Route path="/history" element={<History trainings={trainings} />} />
+      <Route path="/charts" element={<Charts trainings={trainings} dailyLogs={dailyLogs} />} />
+      <Route path="/calendar" element={<Calendar dailyLogs={dailyLogs} tasks={tasks} onLogsUpdated={loadData} />} />
+      <Route path="/tasks" element={<Tasks onTasksChange={loadData} />} />
+    </Routes>
+  );
 
   const navItems = [
-    { label: 'Dashboard', icon: <Home className="w-5 h-5" />, view: 'Dashboard' as View },
-    { label: 'Dodaj Trening', icon: <Plus className="w-5 h-5" />, view: 'AddTraining' as View },
-    { label: 'Kalendarz', icon: <CalendarIcon className="w-5 h-5" />, view: 'Calendar' as View },
-    { label: 'Historia', icon: <HistoryIcon className="w-5 h-5" />, view: 'History' as View },
-    { label: 'Zadania', icon: <CheckSquare className="w-5 h-5" />, view: 'Tasks' as View },
-    { label: 'Wykresy', icon: <BarChart3 className="w-5 h-5" />, view: 'Charts' as View },
+    { label: 'Dashboard', icon: <Home className="w-5 h-5" />, path: '/' },
+    { label: 'Dodaj Trening', icon: <Plus className="w-5 h-5" />, path: '/add-training' },
+    { label: 'Kalendarz', icon: <CalendarIcon className="w-5 h-5" />, path: '/calendar' },
+    { label: 'Historia', icon: <HistoryIcon className="w-5 h-5" />, path: '/history' },
+    { label: 'Zadania', icon: <CheckSquare className="w-5 h-5" />, path: '/tasks' },
+    { label: 'Wykresy', icon: <BarChart3 className="w-5 h-5" />, path: '/charts' },
   ];
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col xl:flex-row">
       {!isMobile && (
         <aside className="hidden xl:flex w-56 bg-[#0a0a0a] border-r border-white/10 px-6 py-8 space-y-8 overflow-y-auto sticky top-0 h-screen flex-col">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">‹</span>
-            <h1 className="text-lg font-bold text-blue-500">m~ wellness</h1>
-          </div>
+          <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <Logo className="w-10 h-10" />
+            <h1 className="text-lg font-bold bg-gradient-to-r from-teal-400 to-teal-100 bg-clip-text text-transparent tracking-tight">m~ wellness</h1>
+          </Link>
           <nav className="space-y-2 flex-1">
             {navItems.map((item) => (
-              <button
-                key={item.view}
-                onClick={() => setCurrentView(item.view)}
-                className={`w-full text-left px-3 py-2 rounded-lg transition font-medium text-sm flex items-center gap-2 ${
-                  currentView === item.view
-                    ? 'bg-blue-600 text-white'
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`w-full text-left px-3 py-2 rounded-lg transition font-medium text-sm flex items-center gap-2 block ${
+                  location.pathname === item.path
+                    ? 'bg-teal-600 text-white'
                     : 'text-gray-400 hover:bg-white/10 hover:text-white'
                 }`}
               >
                 <div className="flex items-center gap-2">
                   {item.icon} {item.label}
                 </div>
-                {item.view === 'Tasks' && uncompletedTasksCount > 0 && (
+                {item.path === '/tasks' && uncompletedTasksCount > 0 && (
                   <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                     {uncompletedTasksCount}
                   </span>
                 )}
-              </button>
+              </Link>
             ))}
           </nav>
         </aside>
       )}
       <div className="flex-1 flex flex-col">
         {isMobile ? (
-          <Layout currentView={currentView} onViewChange={setCurrentView} uncompletedTasksCount={uncompletedTasksCount}>
-            {renderView()}
+          <Layout uncompletedTasksCount={uncompletedTasksCount}>
+            {appRoutes}
           </Layout>
         ) : (
           <main className="flex-1 overflow-y-auto px-8 py-6 max-w-7xl">
-            {renderView()}
+            {appRoutes}
           </main>
         )}
       </div>

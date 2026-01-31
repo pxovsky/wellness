@@ -34,6 +34,7 @@ def get_dashboard():
                 "reading": storage.get_reading_streak(),
                 "kefir": storage.get_kefir_streak(),
                 "water": storage.get_water_streak(),
+                "no_phone": storage.get_no_phone_streak(),
             },
             "compliance": storage.get_compliance_rate(days=7),
             "weekly_calories": {
@@ -291,7 +292,8 @@ def add_task():
             description=data.get('description', ''),
             priority=data.get('priority', 1),
             due_date=data.get('due_date'),
-            reminder_date=data.get('reminder_date')
+            reminder_date=data.get('reminder_date'),
+            tags=data.get('tags', '')
         )
         return jsonify({"status": "success", "id": task_id}), 201
     except Exception as e:

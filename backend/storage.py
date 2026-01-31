@@ -43,6 +43,7 @@ class Task:
     reminder_date: Optional[str] = None
     created_at: str = ""
     position: int = 0
+    tags: str = ""
 
 
 
@@ -137,6 +138,10 @@ def init_db():
             cur.execute("ALTER TABLE tasks ADD COLUMN position INTEGER DEFAULT 0")
             # Ustawiamy początkową kolejność wg ID
             cur.execute("UPDATE tasks SET position = id")
+            
+        if "tags" not in existing_task_cols:
+            print("🛠️ Migracja: Dodaję kolumnę 'tags' do tasks...")
+            cur.execute("ALTER TABLE tasks ADD COLUMN tags TEXT DEFAULT ''")
 
         con.commit()
 
@@ -362,7 +367,7 @@ def get_daily_logs(start_date: str, end_date: str) -> List[dict]:
 
 # ========== TASKS (TO-DO) ==========
 
-def add_task(title: str, priority: int, due_date: Optional[str] = None, description: str = "", reminder_date: Optional[str] = None) -> int:
+def add_task(title: str, priority: int, due_date: Optional[str] = None, description: str = "", reminder_date: Optional[str] = None, tags: str = "") -> int:
     """Add new task"""
     with connect() as con:
         cur = con.cursor()
@@ -372,9 +377,9 @@ def add_task(title: str, priority: int, due_date: Optional[str] = None, descript
         new_pos = max_pos + 1
 
         cur.execute("""
-            INSERT INTO tasks (title, priority, due_date, description, reminder_date, position)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (title, priority, due_date, description, reminder_date, new_pos))
+            INSERT INTO tasks (title, priority, due_date, description, reminder_date, position, tags)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (title, priority, due_date, description, reminder_date, new_pos, tags))
         con.commit()
         return cur.lastrowid
 
@@ -392,7 +397,7 @@ def get_tasks() -> List[dict]:
 
 def update_task(task_id: int, **kwargs) -> bool:
     """Update task fields"""
-    valid_keys = {'title', 'priority', 'due_date', 'is_completed', 'description', 'reminder_date'}
+    valid_keys = {'title', 'priority', 'due_date', 'is_completed', 'description', 'reminder_date', 'tags'}
     updates = {k: v for k, v in kwargs.items() if k in valid_keys}
     
     if not updates:
@@ -447,6 +452,15 @@ def get_reading_streak() -> int:
 
     with connect() as con:
         cur = con.cursor()
+        
+        # Sprawdź dzisiaj - jeśli pusto/0, zacznij sprawdzanie od wczoraj
+        # (żeby nie zerować streaka rano, zanim użytkownik coś wpisze)
+        date_str = current_date.isoformat()
+        cur.execute("SELECT reading_minutes FROM daily_logs WHERE date = ?", (date_str,))
+        row = cur.fetchone()
+        if not row or row[0] <= 0:
+            current_date -= timedelta(days=1)
+
         while True:
             date_str = current_date.isoformat()
             cur.execute("SELECT reading_minutes FROM daily_logs WHERE date = ?", (date_str,))
@@ -468,6 +482,14 @@ def get_kefir_streak() -> int:
 
     with connect() as con:
         cur = con.cursor()
+        
+        # Sprawdź dzisiaj
+        date_str = current_date.isoformat()
+        cur.execute("SELECT kefir_glasses FROM daily_logs WHERE date = ?", (date_str,))
+        row = cur.fetchone()
+        if not row or row[0] <= 0:
+            current_date -= timedelta(days=1)
+
         while True:
             date_str = current_date.isoformat()
             cur.execute("SELECT kefir_glasses FROM daily_logs WHERE date = ?", (date_str,))
@@ -490,12 +512,49 @@ def get_water_streak() -> int:
 
     with connect() as con:
         cur = con.cursor()
+        
+        # Sprawdź dzisiaj
+        date_str = current_date.isoformat()
+        cur.execute("SELECT water_glasses FROM daily_logs WHERE date = ?", (date_str,))
+        row = cur.fetchone()
+        if not row or row[0] < WATER_GOAL:
+            current_date -= timedelta(days=1)
+
         while True:
             date_str = current_date.isoformat()
             cur.execute("SELECT water_glasses FROM daily_logs WHERE date = ?", (date_str,))
             row = cur.fetchone()
 
             if row and row[0] >= WATER_GOAL:
+                streak += 1
+                current_date -= timedelta(days=1)
+            else:
+                break
+
+    return streak
+
+
+def get_no_phone_streak() -> int:
+    """Count consecutive days with no phone after 21 (from today backwards)"""
+    streak = 0
+    current_date = date.today()
+
+    with connect() as con:
+        cur = con.cursor()
+        
+        # Sprawdź dzisiaj
+        date_str = current_date.isoformat()
+        cur.execute("SELECT no_phone_after_21 FROM daily_logs WHERE date = ?", (date_str,))
+        row = cur.fetchone()
+        if not row or row[0] != 1:
+            current_date -= timedelta(days=1)
+
+        while True:
+            date_str = current_date.isoformat()
+            cur.execute("SELECT no_phone_after_21 FROM daily_logs WHERE date = ?", (date_str,))
+            row = cur.fetchone()
+
+            if row and row[0] == 1:
                 streak += 1
                 current_date -= timedelta(days=1)
             else:

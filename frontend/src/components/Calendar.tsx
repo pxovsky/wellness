@@ -1,20 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ChevronLeft, ChevronRight, X,
-  Book, Droplets, Pill, Phone, Code2, Home, Wind
+  Book, Droplets, Pill, Phone, Code2, Home, Wind, CheckSquare
 } from 'lucide-react';
-import { DailyLog } from '../types';
+import { DailyLog, Task } from '../types';
 import { PageHeader } from './PageHeader';
 import { saveDailyLog } from '../utils/storage';
 
 interface CalendarProps {
   dailyLogs: DailyLog[];
+  tasks: Task[];
   onLogsUpdated: () => void;
 }
 
-export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) => {
+export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, tasks, onLogsUpdated }) => {
+  const formatDate = (d: number, m: number, y: number): string => {
+    const monthStr = String(m + 1).padStart(2, '0');
+    const dayStr = String(d).padStart(2, '0');
+    return `${y}-${monthStr}-${dayStr}`;
+  };
+
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const today = new Date();
+    return formatDate(today.getDate(), today.getMonth(), today.getFullYear());
+  });
   const [selectedLog, setSelectedLog] = useState<DailyLog | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -30,12 +40,6 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
   const prevMonthStart = prevMonthDays - adjustedFirstDay + 1;
 
   const weekDays = ['PN', 'WT', 'ŚR', 'CZ', 'PT', 'SO', 'ND'];
-
-  const formatDate = (d: number, m: number, y: number): string => {
-    const monthStr = String(m + 1).padStart(2, '0');
-    const dayStr = String(d).padStart(2, '0');
-    return `${y}-${monthStr}-${dayStr}`;
-  };
 
   // Sprawdza czy dzień ma jakiekolwiek dane (do podświetlenia na zielono)
   const isDayActive = (day: number, isCurrentMonth: boolean): boolean => {
@@ -125,26 +129,21 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
     return achievements;
   };
 
-  const handleDayClick = async (day: number) => {
+  useEffect(() => {
+    if (selectedDate) {
+      const existingLog = dailyLogs.find(l => l.date === selectedDate);
+      setSelectedLog(existingLog ? { ...existingLog } : {
+        date: selectedDate,
+        reading_minutes: 0, water_glasses: 0, kefir_glasses: 0, no_phone_after_21: 0,
+        discipline_score: 0, mood_score: 0, vibe_coding_minutes: 0, household_chores: 0, vitamins: 0
+      });
+      setIsEditing(false); // Zamknij edytor przy zmianie dnia
+    }
+  }, [selectedDate, dailyLogs]);
+
+  const handleDayClick = (day: number) => {
     const dateStr = formatDate(day, month, year);
     setSelectedDate(dateStr);
-    
-    // Find log locally first for instant feedback, then could refetch if needed
-    const existingLog = dailyLogs.find(l => l.date === dateStr);
-    
-    setSelectedLog(existingLog ? { ...existingLog } : {
-      date: dateStr,
-      reading_minutes: 0,
-      water_glasses: 0,
-      kefir_glasses: 0,
-      no_phone_after_21: 0,
-      discipline_score: 0,
-      mood_score: 0,
-      vibe_coding_minutes: 0,
-      household_chores: 0,
-      vitamins: 0
-    });
-    setIsEditing(false);
   };
 
   const handleSaveLog = async () => {
@@ -178,6 +177,87 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500 max-w-4xl mx-auto">
       <PageHeader title="Kalendarz" subtitle="Przegląd Twoich celów" />
+
+      {/* Szczegóły Wybranego Dnia (teraz na górze) */}
+      {selectedLog && selectedDate && (
+        <div className="bg-[#1c1c1e] rounded-xl p-5 border border-white/10 space-y-4 animate-in slide-in-from-top-4 duration-300">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-bold text-white capitalize">
+                {new Date(selectedDate).toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })}
+              </h3>
+              <p className="text-gray-400 text-xs">Podsumowanie dnia</p>
+            </div>
+            <div className="text-right">
+              <span className="text-xs font-bold text-gray-500 uppercase tracking-widest block">Wynik</span>
+              <span className={`text-2xl font-bold ${getCompletionScore(selectedLog) === 100 ? 'text-green-400' : 'text-teal-400'}`}>
+                {getCompletionScore(selectedLog)}%
+              </span>
+            </div>
+          </div>
+
+          {/* Pasek postępu */}
+          <div className="w-full bg-[#2c2c2e] rounded-full h-2 overflow-hidden">
+            <div
+              className="bg-gradient-to-r from-teal-500 to-emerald-500 h-full transition-all duration-500 ease-out"
+              style={{ width: `${getCompletionScore(selectedLog)}%` }}
+            />
+          </div>
+
+          {/* Grid Osiągnięć */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {getAchievements(selectedLog).map((item, idx) => (
+              <div 
+                key={idx} 
+                className={`
+                  p-2 rounded-lg border flex flex-col items-center justify-center text-center gap-1 transition-colors
+                  ${item.achieved ? 'bg-green-900/10 border-green-500/20 text-green-400' : 'bg-[#252528] border-white/5 text-gray-500 opacity-60'}
+                `}
+              >
+                {item.icon}
+                <span className="text-[10px] font-medium leading-tight">{item.label}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Lista Zadań na ten dzień */}
+          {(() => {
+            const dayTasks = tasks.filter(t => t.due_date && t.due_date.startsWith(selectedDate));
+            if (dayTasks.length === 0) return null;
+            
+            return (
+              <div className="mt-4 pt-4 border-t border-white/10">
+                <h4 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">Zadania na ten dzień</h4>
+                <div className="space-y-2">
+                  {dayTasks.map(task => (
+                    <div key={task.id} className="flex items-center gap-3 bg-[#252528] p-3 rounded-lg border border-white/5">
+                      <div className={`p-1.5 rounded-md ${task.is_completed ? 'bg-green-500/20 text-green-400' : 'bg-orange-500/20 text-orange-400'}`}>
+                        <CheckSquare className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium truncate ${task.is_completed ? 'text-gray-500 line-through' : 'text-white'}`}>
+                          {task.title}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(task.due_date!).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          {task.priority === 3 && <span className="text-red-400 ml-2">Priorytet Wysoki</span>}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          <button
+            onClick={() => setIsEditing(true)}
+            className="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-teal-900/20"
+          >
+            Edytuj Dzień
+          </button>
+        </div>
+      )}
       
       <div className="bg-[#1c1c1e] rounded-xl p-4 border border-white/10 space-y-4">
         {/* Header Kalendarza */}
@@ -207,6 +287,9 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
             const dateStr = d.isCurrentMonth ? formatDate(d.day, month, year) : null;
             const isToday = d.isCurrentMonth && new Date(year, month, d.day).toDateString() === new Date().toDateString();
             const isSelected = selectedDate === dateStr && d.isCurrentMonth;
+            
+            const tasksForDay = dateStr ? tasks.filter(t => t.due_date && t.due_date.startsWith(dateStr)) : [];
+            const hasPendingTasks = tasksForDay.some(t => t.is_completed === 0);
 
             return (
               <button
@@ -218,14 +301,17 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
                   ${!d.isCurrentMonth ? 'text-gray-800 cursor-default bg-transparent' : ''}
                   ${d.isCurrentMonth && !isSelected && !isToday && !isActive ? 'bg-[#2c2c2e] text-gray-400 hover:bg-[#3a3a3c]' : ''}
                   ${isActive && !isSelected && !isToday ? 'bg-green-900/20 text-green-400 border border-green-500/30' : ''}
-                  ${isToday ? 'bg-blue-600/20 text-blue-400 border border-blue-500' : ''}
-                  ${isSelected ? 'bg-blue-600 text-white shadow-md transform scale-105 z-10' : ''}
+                  ${isToday ? 'bg-teal-600/20 text-teal-400 border border-teal-500' : ''}
+                  ${isSelected ? 'bg-teal-600 text-white shadow-md transform scale-105 z-10' : ''}
                 `}
               >
                 {d.day}
                 {/* Kropka aktywności dla małych ekranów jeśli nie jest wybrany */}
                 {isActive && !isSelected && (
                   <div className="w-1 h-1 rounded-full bg-green-500 mt-0.5" />
+                )}
+                {hasPendingTasks && !isSelected && (
+                  <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-orange-500" />
                 )}
               </button>
             );
@@ -234,67 +320,12 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
 
         {/* Legenda */}
         <div className="flex gap-4 text-xs pt-2 border-t border-white/5 justify-center">
-            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-600" /><span className="text-gray-400">Wybrany</span></div>
-            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500/20 border border-blue-500" /><span className="text-gray-400">Dziś</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-teal-600" /><span className="text-gray-400">Wybrany</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-teal-500/20 border border-teal-500" /><span className="text-gray-400">Dziś</span></div>
             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-green-500/30" /><span className="text-gray-400">Zrealizowany</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-orange-500" /><span className="text-gray-400">Zadania</span></div>
         </div>
       </div>
-
-      {/* Szczegóły Wybranego Dnia (Pod kalendarzem) */}
-      {selectedLog && selectedDate ? (
-        <div className="bg-[#1c1c1e] rounded-xl p-5 border border-white/10 space-y-4 animate-in slide-in-from-top-4 duration-300">
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-lg font-bold text-white capitalize">
-                {new Date(selectedDate).toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })}
-              </h3>
-              <p className="text-gray-400 text-xs">Podsumowanie dnia</p>
-            </div>
-            <div className="text-right">
-              <span className="text-xs font-bold text-gray-500 uppercase tracking-widest block">Wynik</span>
-              <span className={`text-2xl font-bold ${getCompletionScore(selectedLog) === 100 ? 'text-green-400' : 'text-blue-400'}`}>
-                {getCompletionScore(selectedLog)}%
-              </span>
-            </div>
-          </div>
-
-          {/* Pasek postępu */}
-          <div className="w-full bg-[#2c2c2e] rounded-full h-2 overflow-hidden">
-            <div
-              className="bg-gradient-to-r from-blue-500 to-green-500 h-full transition-all duration-500 ease-out"
-              style={{ width: `${getCompletionScore(selectedLog)}%` }}
-            />
-          </div>
-
-          {/* Grid Osiągnięć */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {getAchievements(selectedLog).map((item, idx) => (
-              <div 
-                key={idx} 
-                className={`
-                  p-2 rounded-lg border flex flex-col items-center justify-center text-center gap-1 transition-colors
-                  ${item.achieved ? 'bg-green-900/10 border-green-500/20 text-green-400' : 'bg-[#252528] border-white/5 text-gray-500 opacity-60'}
-                `}
-              >
-                {item.icon}
-                <span className="text-[10px] font-medium leading-tight">{item.label}</span>
-              </div>
-            ))}
-          </div>
-
-          <button
-            onClick={() => setIsEditing(true)}
-            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-blue-900/20"
-          >
-            Edytuj Dzień
-          </button>
-        </div>
-      ) : (
-        <div className="bg-[#1c1c1e] rounded-xl p-8 border border-white/10 text-center flex flex-col items-center justify-center text-gray-500">
-          <Book className="w-8 h-8 mb-2 opacity-20" />
-          <p className="text-sm">Wybierz dzień z kalendarza, aby zobaczyć szczegóły</p>
-        </div>
-      )}
 
       {/* Edycja - Bottom Sheet / Modal */}
       {selectedLog && isEditing && (
@@ -316,7 +347,7 @@ export const Calendar: React.FC<CalendarProps> = ({ dailyLogs, onLogsUpdated }) 
                    <label className="text-xs font-bold text-gray-400 uppercase">Czytanie (min)</label>
                    <input
                      type="number"
-                     className="w-full bg-black/40 border border-white/10 rounded-lg p-2.5 text-white focus:border-blue-500 focus:outline-none"
+                     className="w-full bg-black/40 border border-white/10 rounded-lg p-2.5 text-white focus:border-teal-500 focus:outline-none"
                      value={selectedLog.reading_minutes || 0}
                      onChange={e => setSelectedLog({ ...selectedLog, reading_minutes: parseInt(e.target.value) || 0 })}
                    />

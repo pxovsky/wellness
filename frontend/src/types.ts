@@ -32,6 +32,7 @@ export interface Task {
   reminder_date?: string;
   is_completed: number; // 1 = yes, 0 = no
   position: number;
+  tags?: string;
   created_at: string;
 }
 

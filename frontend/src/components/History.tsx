@@ -73,7 +73,7 @@ export const History: React.FC<HistoryProps> = ({ trainings }) => {
 
               <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 text-xs xl:text-sm">
                 <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-blue-400" />
+                  <Clock className="w-4 h-4 text-teal-400" />
                   <div>
                     <p className="text-gray-400">Czas</p>
                     <p className="font-bold">{training.duration_min} min</p>

@@ -73,6 +73,7 @@ class TaskCreateRequest(BaseModel):
     priority: int = Field(1, ge=1, le=3) # 1=Low, 2=Medium, 3=High
     due_date: Optional[str] = None
     reminder_date: Optional[str] = None
+    tags: Optional[str] = ""
 
 class TaskUpdateRequest(BaseModel):
     title: Optional[str] = None
@@ -80,6 +81,7 @@ class TaskUpdateRequest(BaseModel):
     priority: Optional[int] = Field(None, ge=1, le=3)
     due_date: Optional[str] = None
     reminder_date: Optional[str] = None
+    tags: Optional[str] = None
     is_completed: Optional[int] = Field(None, ge=0, le=1)
 
 class TaskResponse(BaseModel):
@@ -89,6 +91,7 @@ class TaskResponse(BaseModel):
     priority: int
     due_date: Optional[str]
     reminder_date: Optional[str]
+    tags: str
     is_completed: int
     created_at: str
 

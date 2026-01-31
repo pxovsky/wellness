@@ -86,8 +86,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ trainings, dailyLogs, onRe
       icon: Book,
       count: todayLog?.reading_minutes || 0,
       goal: 60,
-      color: 'bg-blue-500',
-      iconColor: 'text-blue-400',
+      color: 'bg-teal-500',
+      iconColor: 'text-teal-400',
     },
     {
       id: 'vibe-coding',

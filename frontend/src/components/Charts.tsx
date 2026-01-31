@@ -47,7 +47,7 @@ export const Charts: React.FC<ChartsProps> = ({ trainings, dailyLogs = [] }) => 
   };
 
   const complianceData = [
-    { name: 'Czytanie', value: completionCounts.reading, color: '#3b82f6' }, // Blue
+    { name: 'Czytanie', value: completionCounts.reading, color: '#2dd4bf' }, // Teal
     { name: 'Vibe Coding', value: completionCounts.vibe_coding, color: '#6366f1' }, // Indigo
     { name: 'Woda', value: completionCounts.water, color: '#06b6d4' }, // Cyan
     { name: 'Kefir', value: completionCounts.kefir, color: '#eab308' }, // Yellow
@@ -129,7 +129,7 @@ export const Charts: React.FC<ChartsProps> = ({ trainings, dailyLogs = [] }) => 
 
       {/* --- SEKCJA 2: DAILY LOGS --- */}
       <div className="space-y-6">
-        <h3 className="text-lg font-bold text-white border-l-4 border-blue-500 pl-3">Nawyki (ostatnie 7 dni)</h3>
+        <h3 className="text-lg font-bold text-white border-l-4 border-teal-500 pl-3">Nawyki (ostatnie 7 dni)</h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           
@@ -149,7 +149,7 @@ export const Charts: React.FC<ChartsProps> = ({ trainings, dailyLogs = [] }) => 
                     cursor={{fill: '#ffffff10'}} 
                   />
                   <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px' }} />
-                  <Bar dataKey="reading" fill="#3b82f6" name="Czytanie" radius={[4, 4, 0, 0]} stackId="a" />
+                  <Bar dataKey="reading" fill="#2dd4bf" name="Czytanie" radius={[4, 4, 0, 0]} stackId="a" />
                   <Bar dataKey="vibe_coding" fill="#6366f1" name="Vibe Coding" radius={[4, 4, 0, 0]} stackId="a" />
                 </BarChart>
               </ResponsiveContainer>

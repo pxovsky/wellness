@@ -100,7 +100,7 @@ export const AddTraining: React.FC<{ onSaved: () => void }> = ({ onSaved }) => {
               min="1"
               value={training.duration_min}
               onChange={(e) => setTraining({ ...training, duration_min: parseInt(e.target.value) || 0 })}
-              className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-teal-500"
             />
           </div>
           <div>
@@ -110,7 +110,7 @@ export const AddTraining: React.FC<{ onSaved: () => void }> = ({ onSaved }) => {
               min="0"
               value={training.calories}
               onChange={(e) => setTraining({ ...training, calories: parseInt(e.target.value) || 0 })}
-              className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-teal-500"
             />
           </div>
         </div>
@@ -124,7 +124,7 @@ export const AddTraining: React.FC<{ onSaved: () => void }> = ({ onSaved }) => {
               min="0"
               value={training.avg_hr}
               onChange={(e) => setTraining({ ...training, avg_hr: parseInt(e.target.value) || 0 })}
-              className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-teal-500"
             />
           </div>
           <div>
@@ -134,7 +134,7 @@ export const AddTraining: React.FC<{ onSaved: () => void }> = ({ onSaved }) => {
               min="0"
               value={training.max_hr}
               onChange={(e) => setTraining({ ...training, max_hr: parseInt(e.target.value) || 0 })}
-              className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-teal-500"
             />
           </div>
         </div>
@@ -149,7 +149,7 @@ export const AddTraining: React.FC<{ onSaved: () => void }> = ({ onSaved }) => {
             step="0.1"
             value={training.training_effect}
             onChange={(e) => setTraining({ ...training, training_effect: parseFloat(e.target.value) || 0 })}
-            className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+            className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-teal-500"
           />
         </div>
 
@@ -160,7 +160,7 @@ export const AddTraining: React.FC<{ onSaved: () => void }> = ({ onSaved }) => {
             value={training.notes}
             onChange={(e) => setTraining({ ...training, notes: e.target.value })}
             placeholder="Jak się czułeś? Coś specjalnego?"
-            className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 min-h-24 resize-none"
+            className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500 min-h-24 resize-none"
           />
         </div>
 
@@ -169,7 +169,7 @@ export const AddTraining: React.FC<{ onSaved: () => void }> = ({ onSaved }) => {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full md:w-auto md:px-12 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white font-bold py-3 rounded-lg transition flex items-center justify-center gap-2"
+          className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-teal-600/50 text-white font-bold py-3 rounded-lg transition flex items-center justify-center gap-2"
           >
             {saving ? (
               <>
